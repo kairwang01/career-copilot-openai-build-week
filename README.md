@@ -2,30 +2,19 @@
 
 ![Career CoPilot cover](public/og-cover.png)
 
-**An AI-assisted career and hiring workspace that guides candidates from resume to interview—and helps employers turn applications into structured hiring decisions.**
+Career CoPilot brings resume review, job matching, application tracking, interview practice, and hiring workflows into one web app.
 
 [Try the interactive demo](https://copilot.kairwang.cloud/) · [Open a sample report](https://copilot.kairwang.cloud/sample-report) · [View the employer experience](https://copilot.kairwang.cloud/employers)
 
-## Built with Codex + GPT-5.6
+## How we used Codex and GPT-5.6
 
-Codex and GPT-5.6 were used as an agentic engineering pair during the Build Week submission and hardening workflow—not as a substitute for product ownership or human review.
+We used Codex with GPT-5.6 to work in the existing codebase during Build Week. It helped us trace the React and Firebase flows, investigate failing tests, check security boundaries, and prepare the demo and submission materials.
 
-| Workflow | How Codex + GPT-5.6 contributed | Verifiable artifact |
-|---|---|---|
-| Repository understanding | Read the role-based React surfaces, Firebase trust boundaries, Cloud Functions, AI routing, billing, and release documentation before changing or describing the system. | [`CareerApp.tsx`](CareerApp.tsx), [`functions/src/index.ts`](functions/src/index.ts), [`firestore.rules`](firestore.rules) |
-| Reliability analysis | Traced real failure paths across AI requests, idempotent credit charging, refunds, provider fallback, hiring transitions, and Stripe entitlement checks. | [`functions/src/credits/deductCredits.ts`](functions/src/credits/deductCredits.ts), [`functions/src/llm/models.ts`](functions/src/llm/models.ts), [`functions/src/billing/entitlement.ts`](functions/src/billing/entitlement.ts) |
-| Test-driven hardening | Used failing tests, CI, and release-gate evidence to narrow root causes, review targeted fixes, and preserve exact-commit evidence instead of treating plausible code as proof. | [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`scripts/run-release-gate.mjs`](scripts/run-release-gate.mjs), [`tests/`](tests/) |
-| Product communication | Turned the verified architecture and live product screens into an evaluator-first README, Devpost story, evidence map, and honest launch boundary. | [`docs/devpost/PROJECT_STORY.md`](docs/devpost/PROJECT_STORY.md), [`public/product-screenshots/`](public/product-screenshots/) |
+The biggest time savings came from following a problem across the frontend, Cloud Functions, Firestore rules, and tests without losing context. For example, Codex reviewed the credit and refund paths, provider routing, billing entitlements, and CI release gates. Relevant code and tests are linked in [`functions/src/credits/`](functions/src/credits/), [`functions/src/llm/models.ts`](functions/src/llm/models.ts), [`functions/src/billing/entitlement.ts`](functions/src/billing/entitlement.ts), and [`tests/`](tests/).
 
-The workflow followed three rules:
+Our team still made the product, engineering, and design decisions. We chose the scope, reviewed each change, decided what belonged in the demo, and kept the final release behind the repository gates in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-1. **Inspect before claiming.** Codex read the live repository and release audit rather than relying on a generic product description.
-2. **Evidence before confidence.** Claims are linked to source, tests, screenshots, or exact release-gate evidence.
-3. **Human-controlled scope.** Humans set the product direction, reviewed output, decided what to keep, and retained responsibility for deployment and launch approval.
-
-OpenAI describes [Codex](https://developers.openai.com/api/docs/guides/code-generation#use-codex) as its coding agent for writing, reviewing, and debugging software, and recommends current GPT-5-family models such as GPT-5.6 for agentic code-generation work. That is the role Codex + GPT-5.6 played here.
-
-> **Runtime distinction:** Career CoPilot does not hard-code GPT-5.6 as its only end-user model. Product AI requests pass through a server-governed provider layer that supports Gemini and OpenAI-compatible Chat Completions providers. This section documents how Codex + GPT-5.6 helped build and validate the submission.
+Career CoPilot does not require GPT-5.6 as its only runtime model. Product requests use a server-managed provider layer that supports Gemini and OpenAI-compatible providers; GPT-5.6 and Codex were used to build and validate this submission.
 
 ## Why Career CoPilot
 
