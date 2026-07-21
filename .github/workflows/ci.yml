@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Run source release gate
+        run: npm run gate:release:source
+        env:
+          RELEASE_GATE_RESULTS: ${{ runner.temp }}/gate-source
+          APP_BASE_URL: https://copilot.kairwang.cloud
+          BILLING_SIMULATION: "false"
+          STRIPE_PRICE_ESSENTIALS: price_CIEssentials123456
+          STRIPE_PRICE_ACCELERATOR: price_CIAccelerator12345
+          STRIPE_PRICE_EXECUTIVE: price_CIExecutive1234567
+          STRIPE_PRICE_STARTER: price_CIStarter123456789
+          STRIPE_PRICE_GROWTH: price_CIGrowth1234567890
+          STRIPE_PRICE_PRO: price_CIPro1234567890123
+          STRIPE_PRICE_PACK_100: price_CIPack100123456789
+          STRIPE_PRICE_PACK_500: price_CIPack500123456789
+          STRIPE_PRICE_PACK_1000: price_CIPack100012345678
+      - name: Build production-shaped frontend
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: AIzaSyCIReleaseGateKey1234567890
+          VITE_FIREBASE_AUTH_DOMAIN: career-copilot-a3168.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: career-copilot-a3168
+          VITE_FIREBASE_STORAGE_BUCKET: career-copilot-a3168.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "123456789012"
+          VITE_FIREBASE_APP_ID: 1:123456789012:web:abcdef1234567890
+          VITE_FIREBASE_FUNCTIONS_REGION: us-central1
+      - name: Reject generated repository changes
+        run: test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Upload source-gate evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-gate-${{ github.sha }}
+          path: ${{ runner.temp }}/gate-source
+          if-no-files-found: ignore
+          retention-days: 30
+
+  emulator-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - run: npm install --global firebase-tools@15.23.0
+      - run: npx playwright install --with-deps chromium
+      - name: Run emulator release gate
+        run: npm run gate:release:emulator
+        env:
+          RELEASE_GATE_RESULTS: ${{ runner.temp }}/gate-emulator
+      - name: Reject generated repository changes
+        run: test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Upload emulator-gate evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: emulator-gate-${{ github.sha }}
+          path: ${{ runner.temp }}/gate-emulator
+          if-no-files-found: ignore
+          retention-days: 30
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Configure runner-local release paths
+        shell: bash
+        run: |
+          printf 'E2E_STAGE_DIR=%s\n' "$RUNNER_TEMP/career-copilot-stage" >> "$GITHUB_ENV"
+          printf 'RELEASE_GATE_RESULTS=%s\n' "$RUNNER_TEMP/gate-browser" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - run: npm install --global firebase-tools@15.23.0
+      - run: npx playwright install --with-deps chromium
+      - name: Build the browser-acceptance stage once
+        run: npm run build -- --outDir "$E2E_STAGE_DIR"
+        env:
+          VITE_FIREBASE_API_KEY: AIzaSyCIReleaseGateKey1234567890
+          VITE_FIREBASE_AUTH_DOMAIN: career-copilot-a3168.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: career-copilot-a3168
+          VITE_FIREBASE_STORAGE_BUCKET: career-copilot-a3168.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "123456789012"
+          VITE_FIREBASE_APP_ID: 1:123456789012:web:abcdef1234567890
+          VITE_FIREBASE_FUNCTIONS_REGION: us-central1
+      - name: Run browser release gate against emulator flows and built artifact
+        run: npm run gate:release:browser
+      - name: Reject generated repository changes
+        run: test -z "$(git status --porcelain --untracked-files=all)"
+      - name: Upload browser-gate evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-gate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/gate-browser
+            test-results
+          if-no-files-found: ignore
+          retention-days: 30
+
+  release-gate:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [static-and-unit, emulator-contracts, browser-e2e]
+    steps:
+      - name: Require every gate for this commit
+        env:
+          SOURCE_RESULT: ${{ needs.static-and-unit.result }}
+          EMULATOR_RESULT: ${{ needs.emulator-contracts.result }}
+          BROWSER_RESULT: ${{ needs.browser-e2e.result }}
+          APPROVED_SHA: ${{ github.sha }}
+        run: |
+          test "$SOURCE_RESULT" = success
+          test "$EMULATOR_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          printf 'commit=%s\nsource=%s\nemulator=%s\nbrowser=%s\n' \
+            "$APPROVED_SHA" "$SOURCE_RESULT" "$EMULATOR_RESULT" "$BROWSER_RESULT" \
+            > release-gate.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-gate-${{ github.sha }}
+          path: release-gate.txt
+          retention-days: 30
