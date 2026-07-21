@@ -1,0 +1,223 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "usage_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "usage_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "usage_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "application_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "application_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "application_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "application_id", "order": "ASCENDING" },
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "application_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "application_id", "order": "ASCENDING" },
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "application_interviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "application_id", "order": "ASCENDING" },
+        { "fieldPath": "employer_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "job_applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "application_date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "admin_prompt_versions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "promptKey", "order": "ASCENDING" },
+        { "fieldPath": "version", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "admin_prompt_versions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "promptKey", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "api_usage_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "key_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "company_reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "job_postings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_active", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "credit_refund_reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "next_attempt_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "packet_expires_at_ms", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "packet_expires_at_ms", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employer_id", "order": "ASCENDING" },
+        { "fieldPath": "candidate_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "api_usage_logs",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "api_usage_summary_shards",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "sourcing_candidate_packets",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "sourcing_outreach",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "sourcing_outreach_daily_quotas",
+      "fieldPath": "expires_at",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
+}

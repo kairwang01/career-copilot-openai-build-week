@@ -1,0 +1,11 @@
+# Career CoPilot — crawl rules
+# Public marketing pages are indexable; the signed-in app, employer portal,
+# admin console, and billing flows are private and must not be indexed.
+User-agent: *
+Allow: /
+Disallow: /workspace
+Disallow: /portal
+Disallow: /admin
+Disallow: /billing
+
+Sitemap: https://copilot.kairwang.cloud/sitemap.xml

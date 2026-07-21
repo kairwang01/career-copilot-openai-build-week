@@ -1,0 +1,136 @@
+rules_version = '2';
+
+// Client upload paths are kept in sync with the matching blocks below:
+// avatars, company logos, owner-only resumes, and saved portfolio HTML.
+// Server-generated assets (e.g. headshots) are written via the Admin SDK, which
+// bypasses these rules. All other paths are denied by default.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ---- helpers ----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Product roles live in users/{uid}, not in custom auth claims. A missing
+    // profile or role therefore fails closed. This performs one Firestore lookup
+    // after the cheap path, size, and MIME checks have passed.
+    function ownerHasRole(userId, expectedRole) {
+      return isOwner(userId) &&
+        firestore.get(/databases/(default)/documents/users/$(userId)).data.role == expectedRole;
+    }
+
+    // Avatar and logo producers generate {uuid}.{extension}. Keep these image
+    // namespaces limited to browser-renderable raster formats; SVG and arbitrary
+    // image/* subtypes are not safe substitutes for profile images.
+    function isValidRasterImage(fileName) {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        (
+          (fileName.matches('^[A-Za-z0-9-]+[.][pP][nN][gG]$') &&
+            request.resource.contentType == 'image/png') ||
+          (fileName.matches('^[A-Za-z0-9-]+[.][jJ][pP][eE]?[gG]$') &&
+            request.resource.contentType in ['image/jpeg', 'image/jpg']) ||
+          (fileName.matches('^[A-Za-z0-9-]+[.][wW][eE][bB][pP]$') &&
+            request.resource.contentType == 'image/webp') ||
+          (fileName.matches('^[A-Za-z0-9-]+[.][gG][iI][fF]$') &&
+            request.resource.contentType == 'image/gif') ||
+          (fileName.matches('^[A-Za-z0-9-]+[.][aA][vV][iI][fF]$') &&
+            request.resource.contentType == 'image/avif')
+        );
+    }
+
+    function isResumeImageName(fileName) {
+      return fileName.matches('^[A-Za-z0-9-]+[.](png|jpg|jpeg)$');
+    }
+
+    // resumeStorage generates a lowercase extension. Match extension, MIME,
+    // and parser limits so a misleading MIME cannot create an arbitrary path.
+    // application/octet-stream remains valid only for a known extension because
+    // some browsers leave File.type empty for otherwise supported documents.
+    function isValidResume(fileName) {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        (
+          (isResumeImageName(fileName) && request.resource.size < 5 * 1024 * 1024) ||
+          (!isResumeImageName(fileName) && request.resource.size < 10 * 1024 * 1024)
+        ) &&
+        (
+          (fileName.matches('^[A-Za-z0-9-]+[.]pdf$') &&
+            request.resource.contentType in ['application/pdf', 'application/octet-stream']) ||
+          (fileName.matches('^[A-Za-z0-9-]+[.]docx$') &&
+            request.resource.contentType in [
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'application/octet-stream'
+            ]) ||
+          (fileName.matches('^[A-Za-z0-9-]+[.]txt$') &&
+            request.resource.contentType in ['text/plain', 'application/octet-stream']) ||
+          (fileName.matches('^[A-Za-z0-9-]+[.]png$') &&
+            request.resource.contentType in ['image/png', 'application/octet-stream']) ||
+          (fileName.matches('^[A-Za-z0-9-]+[.](jpg|jpeg)$') &&
+            request.resource.contentType in ['image/jpeg', 'image/jpg', 'application/octet-stream'])
+        );
+    }
+
+    // avatars/{userId}/{fileName}
+    // Owner uploads/replaces their own avatar; any signed-in user may read
+    // (needed to display profile photos).
+    match /avatars/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId) && isValidRasterImage(fileName);
+      allow delete: if isOwner(userId);
+    }
+
+    // company-logos/{userId}/{fileName}
+    // Same rules as avatars — employer uploads their own logo.
+    match /company-logos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isValidRasterImage(fileName) && ownerHasRole(userId, 'employer');
+      // Preserve owner cleanup if an account's role changes after the upload.
+      allow delete: if isOwner(userId);
+    }
+
+    // resumes/{userId}/{fileName}
+    // Resume files are PII — ONLY the owner may read, upload, replace or delete
+    // them. Employers never receive the file; talent discovery serves
+    // server-extracted text via a Cloud Function (Admin SDK), not these objects.
+    match /resumes/{userId}/{fileName} {
+      allow read: if isOwner(userId);
+      allow create, update: if isValidResume(fileName) && ownerHasRole(userId, 'candidate');
+      allow delete: if isOwner(userId);
+    }
+
+    // application_resumes/{applicationId}/… — frozen copy of the resume file taken
+    // at apply time (the file HR reviews). Written by createJobApplication and
+    // served via getApplicantResumeFile, both Admin SDK. Clients never touch it.
+    // portfolio-sites/{userId}/{portfolioId}/showcase.html
+    // Saved Showcase HTML. Owner-only because the generated page can include
+    // contact details and resume-derived content.
+    match /portfolio-sites/{userId}/{portfolioId}/showcase.html {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && (
+                     request.resource == null ||
+                     (
+                       request.resource.size < 10 * 1024 * 1024
+                       && request.resource.contentType.matches('text/html.*')
+                     )
+                   );
+    }
+
+    match /application_resumes/{applicationId}/{fileName} {
+      allow read, write: if false;
+    }
+
+    // Everything else denied by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

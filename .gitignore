@@ -1,0 +1,68 @@
+# Logs & Caches
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm-cache*
+.npx-cache
+
+# Dependency directories
+node_modules
+
+# Build outputs
+dist
+dist-ssr
+dist.new
+dist.prev
+dist.release-*
+dist.rollback-*
+
+# Environment, Keys & Firebase
+*.local
+.env
+.env.*
+!.env.example
+!functions/.env.example
+!functions/.env.demo-careercopilot
+.firebase-cli-config
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local project planning & design docs (not for GitHub)
+project-planning/
+design/
+
+# Marketing screenshot QA artifacts (regenerate via npm run marketing:qa)
+marketing/qa-screenshots/*.png
+
+# Local tooling / scratch / AI companions (not part of the app)
+.claude/
+.workbuddy/
+CLAUDE.md
+repomix-output.*
+repo-context.md
+REPO_CONTEXT.md
+firestore-debug.log
+
+.agents/
+# Coverage reports (npm run test:coverage)
+coverage/
+
+# Runtime smoke/browser artifacts
+.playwright-cli/
+output/
+test-results/
+
+.firebase/

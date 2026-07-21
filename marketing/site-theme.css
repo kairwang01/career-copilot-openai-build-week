@@ -1,0 +1,21 @@
+/* System font stack; the public shell makes no external font request. */
+.beta-root {
+  --site-action: #1d4ed8;
+  --site-action-hover: #1e40af;
+  --site-surface: #ffffff;
+  --site-surface-muted: #f8fafc;
+  --site-text: #0f172a;
+  --site-text-muted: #64748b;
+  --site-border: #e2e8f0;
+  --site-ready: #16a34a;
+  --site-ready-bg: #f0fdf4;
+  --site-gap: #ea580c;
+  --site-gap-bg: #fff7ed;
+  --site-risk: #dc2626;
+  --site-risk-bg: #fef2f2;
+  --site-radius: 8px;
+  --site-section: clamp(80px, 12vw, 160px);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--site-text);
+  background: var(--site-surface);
+}

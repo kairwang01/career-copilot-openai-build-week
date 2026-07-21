@@ -1,0 +1,485 @@
+/* Tailwind v4 — scans all source files automatically */
+@import 'tailwindcss';
+
+/* v4 defaults dark: to prefers-color-scheme; the app toggles a .dark class on
+   <html>, so make dark: class-based to match (restores the theme toggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* shadcn/ui CSS-variable theme (light + dark) */
+:root {
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+  --card: #ffffff;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #030213;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* Tailwind v4 theme bridge — maps CSS vars to utility-class tokens */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f9fafb;
+}
+
+html.dark body {
+  background-color: #030712;
+}
+
+html.dark :where(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select) {
+  color: rgb(243 244 246);
+  caret-color: rgb(243 244 246);
+}
+
+html.dark :where(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea)::placeholder {
+  color: rgb(148 163 184);
+  opacity: 1;
+}
+
+html.dark :where(input, textarea, select):-webkit-autofill,
+html.dark :where(input, textarea, select):-webkit-autofill:hover,
+html.dark :where(input, textarea, select):-webkit-autofill:focus {
+  -webkit-text-fill-color: rgb(243 244 246);
+}
+
+/* Admin light surfaces must stay readable even when html.dark is set. */
+[data-admin-light] {
+  color-scheme: light;
+  color: rgb(17 24 39);
+}
+
+html.dark [data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select),
+[data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select) {
+  background-color: rgb(255 255 255) !important;
+  color: rgb(17 24 39) !important;
+  -webkit-text-fill-color: rgb(17 24 39) !important;
+  caret-color: rgb(17 24 39) !important;
+}
+
+html.dark [data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select):disabled,
+[data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea, select):disabled {
+  color: rgb(55 65 81) !important;
+  -webkit-text-fill-color: rgb(55 65 81) !important;
+  opacity: 1 !important;
+}
+
+html.dark [data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea)::placeholder,
+[data-admin-light] :is(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea)::placeholder {
+  color: rgb(75 85 99) !important;
+  opacity: 1 !important;
+}
+
+html.dark [data-admin-light] :is(input, textarea, select):-webkit-autofill,
+html.dark [data-admin-light] :is(input, textarea, select):-webkit-autofill:hover,
+html.dark [data-admin-light] :is(input, textarea, select):-webkit-autofill:focus,
+[data-admin-light] :is(input, textarea, select):-webkit-autofill,
+[data-admin-light] :is(input, textarea, select):-webkit-autofill:hover,
+[data-admin-light] :is(input, textarea, select):-webkit-autofill:focus {
+  -webkit-text-fill-color: rgb(17 24 39) !important;
+  box-shadow: 0 0 0 1000px rgb(255 255 255) inset !important;
+}
+
+[data-admin-light] :where(.dark\:text-gray-100, .dark\:text-gray-200, .dark\:text-slate-100, .dark\:text-slate-200) {
+  color: rgb(17 24 39);
+}
+
+[data-admin-light] :where(.dark\:text-gray-300, .dark\:text-gray-400, .dark\:text-slate-300, .dark\:text-slate-400, .dark\:text-slate-500) {
+  color: rgb(75 85 99);
+}
+
+[data-admin-light] :where(.text-gray-400, .text-gray-500, .text-slate-400, .text-slate-500) {
+  color: rgb(75 85 99);
+}
+
+[data-admin-light] :where(.text-gray-600, .text-slate-600) {
+  color: rgb(55 65 81);
+}
+
+[data-admin-light] :where(.dark\:bg-gray-800, .dark\:bg-gray-900, .dark\:bg-slate-800, .dark\:bg-slate-900) {
+  background-color: rgb(249 250 251);
+}
+
+[data-admin-light] :where(.dark\:bg-red-950, .dark\:bg-red-950\/30, .dark\:bg-red-900\/20) {
+  background-color: rgb(254 242 242);
+}
+
+[data-admin-light] :where(.dark\:bg-amber-950, .dark\:bg-amber-900) {
+  background-color: rgb(255 251 235);
+}
+
+[data-admin-light] :where(.dark\:bg-emerald-900, .dark\:bg-emerald-900\/20, .dark\:bg-emerald-900\/40) {
+  background-color: rgb(236 253 245);
+}
+
+[data-admin-light] :where(.dark\:bg-blue-900, .dark\:bg-blue-900\/30) {
+  background-color: rgb(239 246 255);
+}
+
+[data-admin-light] :where(.dark\:bg-indigo-900\/30, .dark\:bg-indigo-900\/40, .dark\:bg-indigo-900\/50) {
+  background-color: rgb(238 242 255);
+}
+
+[data-admin-light] :where(.dark\:bg-violet-900, .dark\:bg-violet-900\/30) {
+  background-color: rgb(245 243 255);
+}
+
+[data-admin-light] :where(.dark\:border-gray-600, .dark\:border-gray-700, .dark\:border-slate-600, .dark\:border-slate-700) {
+  border-color: rgb(229 231 235);
+}
+
+[data-admin-light] :where(.dark\:border-red-800, .dark\:border-red-800\/50, .dark\:border-red-800\/60) {
+  border-color: rgb(254 202 202);
+}
+
+[data-admin-light] :where(.dark\:border-amber-800) {
+  border-color: rgb(253 230 138);
+}
+
+[data-admin-light] :where(.dark\:border-emerald-800\/50) {
+  border-color: rgb(167 243 208);
+}
+
+/* Prose styles for AI-generated content (was in index.html <style>) */
+.prose {
+  --tw-prose-body: #374151;
+  --tw-prose-headings: #1f2937;
+  --tw-prose-lead: #4b5563;
+  --tw-prose-links: #1d4ed8;
+  --tw-prose-bold: #111827;
+  --tw-prose-counters: #6b7280;
+  --tw-prose-bullets: #d1d5db;
+  --tw-prose-hr: #e5e7eb;
+  --tw-prose-quotes: #111827;
+  --tw-prose-quote-borders: #e5e7eb;
+  --tw-prose-captions: #6b7280;
+  --tw-prose-code: #111827;
+  --tw-prose-pre-code: #e5e7eb;
+  --tw-prose-pre-bg: #1f2937;
+  --tw-prose-invert-body: #d1d5db;
+  --tw-prose-invert-headings: #fff;
+  --tw-prose-invert-bold: #fff;
+}
+
+.dark .dark\:prose-invert {
+  --tw-prose-body: var(--tw-prose-invert-body);
+  --tw-prose-headings: var(--tw-prose-invert-headings);
+  --tw-prose-bold: var(--tw-prose-invert-bold);
+}
+
+.prose-sm { font-size: 0.875rem; line-height: 1.6; }
+.prose-sm p { margin-top: 0.8em; margin-bottom: 0.8em; }
+.prose-sm ul { margin-top: 0.8em; margin-bottom: 0.8em; padding-left: 1.5em; list-style-type: disc; }
+.prose-sm ul > li { margin-top: 0.2em; margin-bottom: 0.2em; }
+.prose-sm strong { font-weight: 600; color: var(--tw-prose-bold); }
+.dark .prose-sm strong { color: var(--tw-prose-invert-bold); }
+.prose-sm h3 { font-size: 1.1em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: var(--tw-prose-headings); }
+.dark .prose-sm h3 { color: var(--tw-prose-invert-headings); }
+.dark .prose-sm { color: var(--tw-prose-invert-body); }
+
+/* App animation keyframes (was inline style in App.tsx) */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+/* Quick entrance for workspace view switches — fast enough to feel responsive. */
+@keyframes view-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes panel-expand {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-scale {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+@keyframes mi-wave {
+  from { transform: scaleY(0.55); opacity: 0.48; }
+  to { transform: scaleY(1.15); opacity: 1; }
+}
+@keyframes aurora {
+  from { background-position: 50% 50%, 50% 50%; }
+  to { background-position: 350% 50%, 350% 50%; }
+}
+@keyframes holographic-text {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes toast-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Radix dialog entrance/exit. The shadcn ui/dialog markup referenced
+   tailwindcss-animate utilities (animate-in/fade-in-0/zoom-in) which are NOT
+   installed, so the business auth modals popped in with no transition. These
+   data-state rules give them a smooth fade (+ subtle scale for the centered
+   content) without adding a dependency. The content keeps its -50%/-50%
+   centering translate inside the keyframe. */
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-content-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.dialog-overlay-anim[data-state='open'] { animation: dialog-overlay-in 0.18s ease-out; }
+.dialog-content-anim[data-state='open'] { animation: dialog-content-in 0.2s ease-out; }
+
+/* Viewport-aware dialogs are rendered into document.body and positioned with
+   viewport coordinates from JavaScript. Keeping the final state transform-free
+   avoids the common long-page bug where a fixed modal is accidentally anchored
+   to a transformed/overflowing workspace container instead of the screen. */
+.viewport-aware-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  overflow: hidden;
+  background: rgb(15 23 42 / 45%);
+  backdrop-filter: blur(8px);
+  animation: dialog-overlay-in 0.18s ease-out;
+}
+
+.viewport-aware-dialog-panel {
+  position: fixed;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-width: calc(100vw - 2rem);
+  animation: fade-scale 0.18s ease-out both;
+}
+
+/* The panel takes programmatic focus on open (for screen-reader context); keep the
+   visible focus ring on the interactive controls inside, not the container box. */
+.viewport-aware-dialog-panel:focus { outline: none; }
+
+/* Onboarding completion checkmark — circle sweeps in, then the tick draws. */
+@keyframes check-stroke {
+  to { stroke-dashoffset: 0; }
+}
+.onboarding-check-circle {
+  stroke-dasharray: 202;
+  stroke-dashoffset: 202;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: check-stroke 0.6s ease-out forwards;
+}
+.onboarding-check-mark {
+  stroke-dasharray: 42;
+  stroke-dashoffset: 42;
+  animation: check-stroke 0.35s ease-out 0.55s forwards;
+}
+
+.animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+.animate-slide-in-up { animation: slide-in-up 0.6s ease-out forwards; }
+.animate-slide-in-left { animation: slide-in-left 0.22s ease-out both; }
+.animate-view-fade { animation: view-fade 0.28s ease-out both; }
+.animate-panel-expand { animation: panel-expand 0.18s ease-out both; }
+.animate-fade-scale { animation: fade-scale 0.2s ease-out both; }
+.animate-slide-in-right { animation: toast-slide-in 0.3s ease-out forwards; }
+.animate-pulse-mic { animation: pulse-mic 1.5s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-aurora { animation: aurora 20s infinite linear; }
+.animate-holographic-text { animation: holographic-text 5s infinite linear; }
+
+/* Candidate workspace primitives. These keep repeated app surfaces aligned
+   without introducing another component dependency layer. */
+.workspace-card {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.workspace-button-secondary,
+.workspace-button-ghost {
+  min-height: 2.625rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-button-secondary {
+  border: 1px solid rgb(203 213 225);
+  background: #ffffff;
+  color: rgb(30 41 59);
+}
+
+.workspace-button-secondary:hover {
+  border-color: rgb(147 197 253);
+  background: rgb(239 246 255);
+  color: rgb(29 78 216);
+}
+
+.workspace-button-ghost {
+  color: rgb(71 85 105);
+}
+
+.workspace-button-ghost:hover {
+  background: rgb(241 245 249);
+  color: rgb(15 23 42);
+}
+
+.workspace-button-secondary:focus-visible,
+.workspace-button-ghost:focus-visible {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+.workspace-button-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+html.dark .workspace-card {
+  border-color: rgb(30 41 59);
+  background: rgb(15 23 42);
+  box-shadow: none;
+}
+
+html.dark .workspace-button-secondary {
+  border-color: rgb(51 65 85);
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
+html.dark .workspace-button-secondary:hover {
+  border-color: rgb(30 64 175);
+  background: rgba(30, 64, 175, 0.25);
+  color: rgb(191 219 254);
+}
+
+html.dark .workspace-button-ghost {
+  color: rgb(203 213 225);
+}
+
+html.dark .workspace-button-ghost:hover {
+  background: rgb(30 41 59);
+  color: #ffffff;
+}
+
+/* Respect OS-level reduced-motion: collapse entrance/looping animations and
+   long transitions so content appears immediately without movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

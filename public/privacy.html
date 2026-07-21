@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index,follow" />
+  <title>Privacy & Cookie Policy | Career CoPilot</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+      color: #1f2937;
+      background: #f8fafc;
+    }
+    .wrap { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+    header a { color: #2563eb; text-decoration: none; font-weight: 600; font-size: 14px; }
+    header a:hover { text-decoration: underline; }
+    h1 { font-size: 32px; margin: 24px 0 4px; }
+    h2 { font-size: 20px; margin: 36px 0 8px; color: #111827; }
+    .updated { color: #6b7280; font-size: 14px; margin-bottom: 8px; }
+    p, li { color: #374151; }
+    a { color: #2563eb; }
+    code { background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-size: 90%; }
+    .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #92400e; }
+    button { border: 1px solid #2563eb; border-radius: 8px; background: #fff; color: #1d4ed8; padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+    button:hover { background: #eff6ff; }
+    button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+    .choice-status { min-height: 1.7em; color: #475569; font-size: 14px; }
+    footer { margin-top: 48px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 13px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><a href="/">&larr; Back to Career CoPilot</a></header>
+    <h1>Privacy &amp; Cookie Policy</h1>
+    <p class="updated">Last updated: July 13, 2026</p>
+
+    <p class="note">
+      Career CoPilot is an early-stage career service. This policy explains, in plain
+      language, what limited data the product handles and how it uses cookies.
+    </p>
+
+    <h2>1. Who We Are</h2>
+    <p>
+      "Career CoPilot" ("we", "us") is an AI-assisted career-coaching application. This
+      policy applies to your use of this website and its features.
+    </p>
+
+    <h2>2. Information We Collect</h2>
+    <ul>
+      <li><strong>Account information</strong> &mdash; if you sign in, basic profile details (such as your name and email) needed to provide the service.</li>
+      <li><strong>Content you provide</strong> &mdash; resume text, documents, or answers you submit so the AI tools can analyze them and return results.</li>
+      <li><strong>Preferences</strong> &mdash; settings such as your chosen interface language and theme.</li>
+      <li><strong>Hiring and application records</strong> &mdash; job postings, applications, interview scheduling, scorecards, messages, and consented sourcing records created when you use those workflows.</li>
+      <li><strong>Billing records</strong> &mdash; plan, credit, checkout, and payment-provider identifiers. We do not receive or store your full payment-card number.</li>
+      <li><strong>Basic usage data</strong> &mdash; standard technical information (such as browser type) needed to operate the site.</li>
+    </ul>
+
+    <h2>3. How We Use Cookies</h2>
+    <p>We use a small number of cookies and similar browser storage. Essential storage is used to:</p>
+    <ul>
+      <li>Remember your <strong>cookie consent choice</strong> (stored in a <code>cookie_consent</code> cookie).</li>
+      <li>Keep you signed in and maintain your session.</li>
+      <li>Remember preferences such as your language selection.</li>
+      <li>Keep local drafts and setup state, including profile fields, job preferences, onboarding progress, and workspace-tour completion, on the device where you entered them.</li>
+    </ul>
+    <p>
+      Optional error monitoring is disabled until you choose "Allow monitoring"
+      in the consent banner. You can use the core site with essential storage only.
+    </p>
+
+    <h2>4. Third-Party Services</h2>
+    <p>To provide features you request, the product uses these external services:</p>
+    <ul>
+      <li><strong>Configured AI provider</strong> &mdash; content you submit to an AI tool is sent only when you run that tool. Supported routes can use Google Gemini, KairLLM, DeepSeek, or an employer-configured compatible endpoint.</li>
+      <li><strong>Employer-configured AI endpoint</strong> &mdash; an employer's raw provider key is stored in a server-only credential record, masked in the product UI, and used only for requests to the endpoint that employer configured.</li>
+      <li><strong>Firebase (Google)</strong> &mdash; authentication, account and application data, uploaded files, and server-side functions.</li>
+      <li><strong>Stripe</strong> &mdash; payment collection after you explicitly start checkout. Stripe handles payment-card details; Career CoPilot stores billing status and provider identifiers.</li>
+      <li><strong>Sentry</strong> &mdash; optional error diagnostics only after you allow optional monitoring. It is configured not to send default personal information.</li>
+    </ul>
+    <p>These providers process data under their own terms and privacy policies.</p>
+
+    <h2>5. Your Choices</h2>
+    <ul>
+      <li>Decline optional monitoring via the consent banner.</li>
+      <li>Use the site without signing in to avoid creating an account.</li>
+      <li>Clear cookies and site data through your browser at any time.</li>
+      <li>Ask us to provide, correct, export, or delete account data by contacting the address below. We may need to verify that the request belongs to the account holder.</li>
+    </ul>
+    <p>
+      Clearing browser data removes device-local copies only. It does not remove records already
+      stored with your signed-in account or with service providers.
+    </p>
+    <p>
+      <button
+        id="reset-consent"
+        type="button"
+        data-reset-cookie="cookie_consent=; path=/; max-age=0; SameSite=Lax"
+      >Reset optional-cookie choice</button>
+    </p>
+    <p id="reset-consent-status" class="choice-status" role="status" aria-live="polite"></p>
+
+    <h2>6. Retention and Account Deletion</h2>
+    <p>
+      Partner API usage logs use a 90-day expiry field after the documented production backfill and TTL
+      rollout. Day/month operational counters contain request and error totals without API-key or request
+      identifiers and use a 120-day expiry after their last update. Both policies delete eventually rather
+      than at an exact deadline. Apart from these limited policies, a comprehensive
+      automatic retention schedule and self-service export/deletion flow are not yet available. Account
+      removal currently removes sign-in access, the parent profile, and private
+      employer AI credentials after recurring-billing checks. It is <strong>not full data erasure</strong>:
+      shared hiring records, financial and audit records, uploaded files, and Stripe records may remain
+      pending an approved retention/anonymization policy or required external action. Contact us before
+      relying on account removal for a specific legal or records-management need.
+    </p>
+
+    <h2>7. Security and International Processing</h2>
+    <p>
+      We use authenticated server functions, access-control rules, private credential storage, and
+      transport encryption to reduce unauthorized access. No internet service can guarantee absolute
+      security. Firebase, Stripe, Sentry, and the configured AI provider may process information in
+      countries where they or their subprocessors operate; their own privacy terms govern that processing.
+    </p>
+
+    <h2>8. Policy Changes</h2>
+    <p>
+      We may update this notice as the service, providers, or retention practices change. The date at
+      the top identifies the current version. Material product changes must be reflected here before release.
+    </p>
+
+    <h2>9. Contact</h2>
+    <p>Questions about this policy? Contact <a href="mailto:support@careercopilot.ai">support@careercopilot.ai</a>.</p>
+
+    <footer>&copy; 2026 Career CoPilot. Early-stage career service.</footer>
+  </div>
+  <script src="/privacy-consent-reset.js" defer></script>
+</body>
+</html>

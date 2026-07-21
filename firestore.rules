@@ -1,0 +1,958 @@
+rules_version = '2';
+
+// ---------------------------------------------------------------------------
+// Merged ruleset: dev's authorization hardening + firebase-migration's field
+// validation. Best-of-both, with the firebase-migration security regressions
+// removed.
+//
+// Authorization / privacy model is dev's (UNCHANGED from what `dev` deploys today,
+// so nothing that works now regresses):
+//   - users are owner-only read; collection-wide candidate reads are NOT allowed
+//   - credits & subscription_status are server-only (Cloud Functions / Admin SDK)
+//   - initial credit grant capped at 150 on client create
+//   - role supports candidate | employer | agency, but client creates are
+//     candidate-only; business roles are provisioned server-side
+//   - default-deny everything else
+//
+// Field-level schema validation (validUser / validJobPosting / ...) is adopted
+// from firebase-migration, with whitelist fixes so current client writes pass:
+//   - users:            added `email`, `preferred_language`
+//   - job_applications: added `compatibility_score`
+//
+// Three firebase-migration regressions were dropped:
+//   - users.credits self-grant cap was 1_000_000 -> restored to the canonical
+//     150-credit initial grant on create
+//   - users.role was client-selectable on create -> restricted to candidate so
+//     the Auth-trigger race cannot preserve a forged employer/agency identity
+//   - users.subscription_status allowed paid tiers on create -> restricted to
+//     free | pending_* (paid tiers granted server-side only)
+//   - users read was open to any signed-in user for role=="candidate"
+//     (leaks resume_text + wallet_address PII) -> kept owner-only
+//
+// KNOWN LIMITATION: employer talent-discovery (getCandidateProfilesByIds /
+// listCandidateProfilesWithResume in lib/recruitingData.ts) reads other users'
+// docs and is intentionally NOT permitted here. It must be served by a
+// field-limited, consent-gated Cloud Function. This matches dev's existing
+// decision and is unchanged by this merge.
+//
+// TEST BEFORE DEPLOY against the Firestore emulator (firebase.json configures it
+// on :8080). The added validators assert timestamp types on week_start_date,
+// application_date, english_pro_last_practice — confirm real writes validate.
+// ---------------------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers ----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function hasField(data, field) {
+      return data.keys().hasAny([field]);
+    }
+
+    function optionalString(data, field, maxSize) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        (data[field] is string && data[field].size() <= maxSize);
+    }
+
+    function optionalUrl(data, field, maxSize) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        (
+          data[field] is string &&
+          data[field].size() <= maxSize &&
+          (data[field].matches("^https://.*") || data[field].matches("^http://.*"))
+        );
+    }
+
+    function optionalNumber(data, field, minValue, maxValue) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        (data[field] is number && data[field] >= minValue && data[field] <= maxValue);
+    }
+
+    function optionalTimestamp(data, field) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        data[field] is timestamp;
+    }
+
+    // The profile data client stamps updated_at as an ISO string on every
+    // update/upsert (lib/data/firebaseDataClient.ts), while server writes use
+    // real timestamps — mirror the created_at dual-shape precedent above so
+    // client profile edits validate as designed.
+    function optionalClientTimestamp(data, field) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        data[field] is timestamp ||
+        (data[field] is string && data[field].size() >= 10 && data[field].size() <= 40);
+    }
+
+    function optionalBool(data, field) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        data[field] is bool;
+    }
+
+    function optionalDateString(data, field) {
+      return !hasField(data, field) ||
+        data[field] == null ||
+        (data[field] is string && data[field].matches("^\\d{4}-\\d{2}-\\d{2}$"));
+    }
+
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // A candidate may not add/change employer identity (company_*) fields — only
+    // employer/agency accounts own a company profile. (Used on the user update
+    // rule; relies on `role` being pinned so it can't be flipped in the same write.)
+    function candidateCompanyFieldsUnchanged() {
+      return request.resource.data.role != "candidate" ||
+        unchanged([
+          "company_name", "company_description", "company_logo_url",
+          "company_website", "company_size", "industry", "founded_year"
+        ]);
+    }
+
+    // dev supports candidate | employer | agency (firebase-migration dropped agency).
+    function validRole(role) {
+      return role in ["candidate", "employer", "agency"];
+    }
+
+    function validSubscriptionStatus(status) {
+      return status is string &&
+        status.size() <= 80 &&
+        (
+          status == "free" ||
+          status in ["essentials", "accelerator", "executive", "starter", "growth", "pro", "single_post", "job_pack"] ||
+          status.matches("^pending_[a-z0-9_]+$") ||
+          status.matches("^pending_biz_[a-z0-9_]+$")
+        );
+    }
+
+    // Create-time: a client may set only `free` or a `pending_*` routing value —
+    // never a paid tier directly. Paid tiers are granted server-side by the
+    // setSubscriptionStatus Cloud Function.
+    function createSubscriptionAllowed(data) {
+      return !hasField(data, "subscription_status") ||
+        data.subscription_status == "free" ||
+        data.subscription_status.matches("^pending_[a-z0-9_]+$") ||
+        data.subscription_status.matches("^pending_biz_[a-z0-9_]+$");
+    }
+
+    function validJobPreferences(prefs) {
+      return prefs == null ||
+        (
+          prefs is map &&
+          prefs.keys().hasOnly(["status", "roles", "locations", "salaryMin", "availability"]) &&
+          prefs.keys().hasAll(["status", "roles", "locations", "salaryMin", "availability"]) &&
+          prefs.status in ["active", "open", "browsing", "not_looking"] &&
+          prefs.roles is string &&
+          prefs.roles.size() <= 240 &&
+          prefs.locations is string &&
+          prefs.locations.size() <= 240 &&
+          prefs.salaryMin is string &&
+          prefs.salaryMin.size() <= 80 &&
+          prefs.availability is string &&
+          prefs.availability.size() <= 120
+        );
+    }
+
+    function validUser(data) {
+      return data.keys().hasOnly([
+          "role",
+          "full_name",
+          "birth_date",
+          "email",
+          "preferred_language",
+          "avatar_url",
+          "subscription_status",
+          "resume_text",
+          "resume_file_url",
+          "resume_file_name",
+          "resume_file_path",
+          "resume_file_size",
+          "resume_file_uploaded_at",
+          "job_preferences",
+          "company_name",
+          "organization_verified",
+          "role_provenance",
+          "role_provisioned_at",
+          "company_description",
+          "company_logo_url",
+          "company_website",
+          "company_size",
+          "industry",
+          "founded_year",
+          "english_pro_streak",
+          "english_pro_last_practice",
+          "wallet_address",
+          "nft_minted",
+          "nft_staked",
+          "nft_token_id",
+          "nft_earnings",
+          "credits",
+          "created_at",
+          "updated_at"
+        ]) &&
+        data.keys().hasAll(["role", "credits", "created_at"]) &&
+        validRole(data.role) &&
+        (!hasField(data, "subscription_status") || validSubscriptionStatus(data.subscription_status)) &&
+        data.credits is number &&
+        data.credits >= 0 &&
+        data.credits <= 1000000 &&
+        // Server-created profiles use a timestamp. Some legacy docs persisted
+        // created_at as an ISO string; keep accepting that shape here so their
+        // owners can edit other profile fields. The create rule below separately
+        // requires an exact request-time timestamp for every new client document.
+        (data.created_at is timestamp || data.created_at is string) &&
+        optionalTimestamp(data, "updated_at") &&
+        optionalString(data, "full_name", 120) &&
+        optionalDateString(data, "birth_date") &&
+        optionalString(data, "email", 320) &&
+        optionalString(data, "preferred_language", 20) &&
+        optionalUrl(data, "avatar_url", 2048) &&
+        optionalString(data, "subscription_status", 80) &&
+        optionalString(data, "resume_text", 200000) &&
+        // Original resume file (stored in Storage; these are just the references).
+        optionalUrl(data, "resume_file_url", 2048) &&
+        optionalString(data, "resume_file_name", 255) &&
+        optionalString(data, "resume_file_path", 1024) &&
+        optionalNumber(data, "resume_file_size", 0, 52428800) &&
+        optionalString(data, "resume_file_uploaded_at", 40) &&
+        (!hasField(data, "job_preferences") || validJobPreferences(data.job_preferences)) &&
+        optionalString(data, "company_name", 160) &&
+        optionalBool(data, "organization_verified") &&
+        optionalString(data, "role_provenance", 80) &&
+        optionalTimestamp(data, "role_provisioned_at") &&
+        optionalString(data, "company_size", 20) &&
+        optionalString(data, "industry", 80) &&
+        optionalString(data, "founded_year", 8) &&
+        optionalString(data, "company_description", 5000) &&
+        optionalUrl(data, "company_logo_url", 2048) &&
+        optionalUrl(data, "company_website", 2048) &&
+        optionalNumber(data, "english_pro_streak", 0, 100000) &&
+        // The client writes a YYYY-MM-DD day string; historical documents may
+        // hold a timestamp, so both shapes stay valid.
+        (optionalDateString(data, "english_pro_last_practice") ||
+          optionalTimestamp(data, "english_pro_last_practice")) &&
+        optionalString(data, "wallet_address", 128) &&
+        // Proof-of-Talent credential state (experimental Web3 module). Written
+        // by the client during wallet sync — booleans, token id and accrued
+        // testnet rewards only; never balances that grant product value.
+        optionalBool(data, "nft_minted") &&
+        optionalBool(data, "nft_staked") &&
+        optionalNumber(data, "nft_token_id", 0, 1000000000) &&
+        optionalNumber(data, "nft_earnings", 0, 1000000);
+    }
+
+    function validLegacyUserProfileUpdate(data) {
+      return data.diff(resource.data).affectedKeys().hasOnly([
+          "full_name",
+          "birth_date",
+          "avatar_url",
+          "updated_at"
+        ]) &&
+        optionalString(data, "full_name", 120) &&
+        optionalDateString(data, "birth_date") &&
+        optionalUrl(data, "avatar_url", 2048) &&
+        optionalTimestamp(data, "updated_at");
+    }
+
+    function validWeb3UserProfileUpdate(data) {
+      return data.diff(resource.data).affectedKeys().hasOnly([
+          "wallet_address",
+          "nft_minted",
+          "nft_staked",
+          "nft_token_id",
+          "nft_earnings",
+          "updated_at"
+        ]) &&
+        optionalString(data, "wallet_address", 128) &&
+        optionalBool(data, "nft_minted") &&
+        optionalBool(data, "nft_staked") &&
+        optionalNumber(data, "nft_token_id", 0, 1000000000) &&
+        optionalNumber(data, "nft_earnings", 0, 1000000) &&
+        optionalTimestamp(data, "updated_at");
+    }
+
+    // English Pro writes only its streak pair after a completed practice. A
+    // narrow delta validator keeps this frequent update cheap: rich profile
+    // documents pushed the full validUser() re-validation over the rules
+    // expression-evaluation limit, which silently denied every streak save.
+    function validEnglishProStreakUpdate(data) {
+      // The profile data client appends updated_at to every update and its
+      // sanitizer converts both updated_at and english_pro_last_practice to
+      // Firestore timestamps on the wire (legacy documents may still hold
+      // strings), so both fields need the dual-shape check. Validate only what
+      // the delta touches; untouched legacy fields must not fail it.
+      return data.diff(resource.data).affectedKeys().hasOnly([
+          "english_pro_streak",
+          "english_pro_last_practice",
+          "updated_at"
+        ]) &&
+        optionalNumber(data, "english_pro_streak", 0, 100000) &&
+        optionalClientTimestamp(data, "english_pro_last_practice") &&
+        optionalClientTimestamp(data, "updated_at");
+    }
+
+    function validCareerPath(data) {
+      return data.keys().hasOnly([
+          "desired_role",
+          "summary",
+          "skill_gaps",
+          "actionable_steps",
+          "bridge_roles",
+          "created_at"
+        ]) &&
+        data.keys().hasAll(["desired_role", "created_at"]) &&
+        data.desired_role is string &&
+        data.desired_role.size() > 0 &&
+        data.desired_role.size() <= 180 &&
+        optionalString(data, "summary", 20000) &&
+        (!hasField(data, "skill_gaps") || data.skill_gaps == null || data.skill_gaps is list) &&
+        (!hasField(data, "actionable_steps") || data.actionable_steps == null || data.actionable_steps is list) &&
+        (!hasField(data, "bridge_roles") || data.bridge_roles == null || data.bridge_roles is list) &&
+        data.created_at is timestamp;
+    }
+
+    function validInterviewSession(data) {
+      return data.keys().hasOnly([
+          "job_description",
+          "market_name",
+          "overall_summary",
+          "started_at",
+          "exchanges"
+        ]) &&
+        data.keys().hasAll(["started_at", "exchanges"]) &&
+        data.started_at is timestamp &&
+        data.exchanges is list &&
+        optionalString(data, "job_description", 20000) &&
+        optionalString(data, "market_name", 120) &&
+        optionalString(data, "overall_summary", 20000);
+    }
+
+    function validJobOpportunity(data) {
+      return data.keys().hasOnly([
+          "job_title",
+          "company",
+          "location",
+          "url",
+          "ai_summary",
+          "compatibility_score",
+          "missing_skills",
+          "is_saved",
+          "created_at"
+        ]) &&
+        data.keys().hasAll(["job_title", "company", "url", "is_saved", "created_at"]) &&
+        data.job_title is string &&
+        data.job_title.size() > 0 &&
+        data.job_title.size() <= 180 &&
+        data.company is string &&
+        data.company.size() > 0 &&
+        data.company.size() <= 180 &&
+        data.url is string &&
+        data.url.size() > 0 &&
+        data.url.size() <= 2048 &&
+        data.is_saved is bool &&
+        data.created_at is timestamp &&
+        optionalString(data, "location", 180) &&
+        optionalString(data, "ai_summary", 20000) &&
+        optionalNumber(data, "compatibility_score", 0, 100);
+    }
+
+    function validResumeAnalysis(data) {
+      return data.keys().hasOnly([
+          "event_id",
+          "score",
+          "market_name",
+          "summary",
+          "strengths",
+          "improvements",
+          "keywords",
+          "created_at"
+        ]) &&
+        data.keys().hasAll(["score", "market_name", "created_at"]) &&
+        data.score is number &&
+        data.score >= 0 &&
+        data.score <= 100 &&
+        data.market_name is string &&
+        data.market_name.size() > 0 &&
+        data.market_name.size() <= 120 &&
+        data.created_at is timestamp &&
+        optionalString(data, "event_id", 128) &&
+        optionalString(data, "summary", 20000);
+    }
+
+    function validToolEvent(data) {
+      return data.keys().hasOnly(["tool_key", "metadata", "created_at"]) &&
+        data.keys().hasAll(["tool_key", "created_at"]) &&
+        data.tool_key is string &&
+        data.tool_key.size() > 0 &&
+        data.tool_key.size() <= 120 &&
+        data.created_at is timestamp;
+    }
+
+    function validWeeklyInsight(data) {
+      return data.keys().hasOnly(["week_start_date", "summary_text", "actionable_tip", "created_at"]) &&
+        data.keys().hasAll(["week_start_date", "summary_text", "created_at"]) &&
+        data.week_start_date is timestamp &&
+        data.summary_text is string &&
+        data.summary_text.size() > 0 &&
+        data.summary_text.size() <= 20000 &&
+        data.created_at is timestamp &&
+        optionalString(data, "actionable_tip", 5000);
+    }
+
+    function validShortlistStatus(status) {
+      return status in ["saved", "contacted", "rejected"];
+    }
+
+    function validShortlistEntry(data) {
+      return data.keys().hasOnly([
+          "candidate_name",
+          "candidate_snapshot",
+          "job_id",
+          "job_title",
+          "match_score",
+          "match_reasons",
+          "missing_requirements",
+          "notes",
+          "status",
+          "saved_at",
+          "saved_by"
+        ]) &&
+        data.keys().hasAll([
+          "candidate_name", "job_id", "job_title",
+          "match_score", "match_reasons",
+          "notes", "status", "saved_at", "saved_by"
+        ]) &&
+        data.candidate_name is string &&
+        data.candidate_name.size() > 0 &&
+        data.candidate_name.size() <= 200 &&
+        data.job_id is string &&
+        data.job_id.size() > 0 &&
+        data.job_id.size() <= 128 &&
+        data.job_title is string &&
+        data.job_title.size() > 0 &&
+        data.job_title.size() <= 200 &&
+        data.match_score is number &&
+        data.match_score >= 0 &&
+        data.match_score <= 100 &&
+        data.match_reasons is list &&
+        data.match_reasons.size() <= 20 &&
+        (!hasField(data, "missing_requirements") || data.missing_requirements == null ||
+          (data.missing_requirements is list && data.missing_requirements.size() <= 20)) &&
+        data.notes is string &&
+        data.notes.size() <= 2000 &&
+        validShortlistStatus(data.status) &&
+        data.saved_at is timestamp &&
+        data.saved_by is string &&
+        data.saved_by.size() > 0 &&
+        data.saved_by.size() <= 128 &&
+        (!hasField(data, "candidate_snapshot") || data.candidate_snapshot == null ||
+          data.candidate_snapshot is map);
+    }
+
+    // Update: only notes and status may change.
+    function validShortlistEntryUpdate(data) {
+      return data.notes is string &&
+        data.notes.size() <= 2000 &&
+        validShortlistStatus(data.status);
+    }
+
+    function validJobPosting(data) {
+      return data.keys().hasOnly([
+          "employer_id",
+          "title",
+          "company_name",
+          "company_size",
+          "industry",
+          "founded_year",
+          "description",
+          "location",
+          "salary_range",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ]) &&
+        data.keys().hasAll(["employer_id", "title", "is_active", "created_at", "updated_at"]) &&
+        data.employer_id is string &&
+        data.employer_id.size() > 0 &&
+        data.employer_id.size() <= 128 &&
+        data.title is string &&
+        data.title.size() > 0 &&
+        data.title.size() <= 180 &&
+        data.is_active is bool &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp &&
+        optionalString(data, "company_name", 160) &&
+        optionalString(data, "company_size", 20) &&
+        optionalString(data, "industry", 80) &&
+        optionalString(data, "founded_year", 8) &&
+        optionalString(data, "description", 20000) &&
+        optionalString(data, "location", 180) &&
+        optionalString(data, "salary_range", 120);
+    }
+
+    function validPortfolioDraft(data) {
+      return data.keys().hasOnly([
+          "version",
+          "resume_fingerprint",
+          "details",
+          "projects",
+          "content",
+          "updated_at"
+        ]) &&
+        data.keys().hasAll(["version", "resume_fingerprint", "details", "projects", "updated_at"]) &&
+        data.version == 1 &&
+        optionalString(data, "resume_fingerprint", 80) &&
+        data.details is map &&
+        data.projects is list &&
+        data.projects.size() <= 12 &&
+        (!hasField(data, "content") || data.content == null || data.content is map) &&
+        optionalString(data, "updated_at", 40);
+    }
+
+    function validSavedPortfolio(data, userId, portfolioId) {
+      return data.keys().hasOnly([
+          "version",
+          "name",
+          "theme",
+          "html_path",
+          "resume_fingerprint",
+          "created_at",
+          "updated_at"
+        ]) &&
+        data.keys().hasAll(["version", "name", "theme", "html_path", "created_at", "updated_at"]) &&
+        data.version == 1 &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.name.size() <= 160 &&
+        data.theme is string &&
+        data.theme.size() > 0 &&
+        data.theme.size() <= 40 &&
+        data.html_path is string &&
+        portfolioId.matches("^[A-Za-z0-9_-]+$") &&
+        data.html_path == "portfolio-sites/" + userId + "/" + portfolioId + "/showcase.html" &&
+        optionalString(data, "resume_fingerprint", 80) &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    // (validApplicationStatus / validJobApplication removed — job_applications
+    // creates and updates are now server-only via Cloud Functions, so the
+    // client-write validators are dead. Status values are validated in
+    // updateApplicationStatus.ts.)
+
+    // ---- users/{userId} ---------------------------------------------------
+    match /users/{userId} {
+
+      // Owner-only read. Collection-wide candidate reads (employer talent
+      // discovery) are intentionally denied — they would expose every
+      // candidate's resume_text PII. Serve that via a consent-gated Cloud
+      // Function, not an open rule. Legacy custom_provider fields contain raw
+      // API keys, so documents still awaiting the server-side migration fail
+      // closed until that field has been copied privately and removed.
+      allow read: if isOwner(userId)
+        && (resource == null || !hasField(resource.data, "custom_provider"));
+
+      // Create: owner-only candidate self-healing with a valid shape. The client
+      // may NOT self-assign an employer/agency role, grant more than the canonical
+      // 150-credit initial balance, or select a paid tier. Business-account
+      // provisioning is server-only via Admin SDK and bypasses these rules.
+      allow create: if isOwner(userId)
+        && validUser(request.resource.data)
+        && request.resource.data.role == "candidate"
+        && request.resource.data.created_at is timestamp
+        && request.resource.data.created_at == request.time
+        && !hasField(request.resource.data, "organization_verified")
+        && !hasField(request.resource.data, "role_provenance")
+        && !hasField(request.resource.data, "role_provisioned_at")
+        && request.resource.data.credits <= 150
+        && createSubscriptionAllowed(request.resource.data);
+
+      // Update: owner may change profile fields, but credits, subscription_status,
+      // role and created_at are server-only / immutable from the client. Pinning
+      // `role` is the launch-critical trust fix: without it any candidate could
+      // update their own doc with role:"employer" and self-escalate into
+      // employer-only features (posting jobs, talent discovery). Role is set only
+      // by onUserCreated / setSubscriptionStatus (Admin SDK). Candidates also may
+      // not write employer identity (company_*) fields — anti-impersonation.
+      allow update: if isOwner(userId)
+        && unchanged([
+          "credits", "subscription_status", "created_at", "custom_provider", "role",
+          "organization_verified", "role_provenance", "role_provisioned_at"
+        ])
+        && (
+          validEnglishProStreakUpdate(request.resource.data) ||
+          validLegacyUserProfileUpdate(request.resource.data) ||
+          validWeb3UserProfileUpdate(request.resource.data) ||
+          validUser(request.resource.data)
+        )
+        && candidateCompanyFieldsUnchanged();
+
+      allow delete: if false;
+
+      // career_path_analyses/{docId} — a candidate's saved career roadmaps
+      // ("My Roadmaps"). Persisted after each generateCareerPath run so they can
+      // revisit / compare past analyses. Owner-only; shape validated so a roadmap
+      // can't be inflated past the desired_role / summary / list fields.
+      match /career_path_analyses/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validCareerPath(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /interview_sessions/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validInterviewSession(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /job_opportunities/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validJobOpportunity(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /resume_analyses/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validResumeAnalysis(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /tool_events/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validToolEvent(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // weekly_insights/{weekStartDate} — the candidate's weekly AI insight card
+      // (SCRUM-31). Generated server-side by the generateWeeklyInsights scheduled
+      // Cloud Function (Admin SDK); the client is READ-ONLY. Doc id is the ISO
+      // week-start date so re-runs are idempotent. (validWeeklyInsight is retained
+      // and documents the server-written shape.)
+      match /weekly_insights/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if false;
+      }
+
+      // ---- users/{userId}/notifications/{id} --------------------------------
+      // Written server-side only (Admin SDK via onApplicationStatusChange trigger).
+      // Candidates may read their own notifications and flip read→true; no other
+      // client mutations are allowed.
+      match /notifications/{id} {
+        allow read: if isOwner(userId);
+
+        // Only the `read` field may be changed by the owner (mark-read): the
+        // diff allowlist blocks edits to identity fields AND the addition of
+        // any new field, and pins the value to a boolean.
+        allow update: if isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"])
+          && request.resource.data.read is bool;
+
+        // Server-only creates/deletes — trigger writes via Admin SDK.
+        allow create, delete: if false;
+      }
+
+      // ---- users/{userId}/shortlists/{id} -----------------------------------
+      // Employer-only snapshots saved during Talent Discovery. The employer
+      // (userId) is the exclusive reader/writer. Candidate user docs are never
+      // referenced-read here — data is captured as a snapshot at save time.
+      match /shortlists/{docId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId) && validShortlistEntry(request.resource.data);
+
+        allow update: if isOwner(userId)
+          && validShortlistEntryUpdate(request.resource.data)
+          && unchanged(["candidate_name", "candidate_snapshot", "job_id",
+                        "job_title", "match_score", "match_reasons",
+                        "missing_requirements", "saved_at", "saved_by"]);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // hidden_candidates/{candidateId} — per-employer "do not surface this candidate
+      // in Talent Discovery again" signal. Owner-only; the doc is a lightweight marker.
+      match /hidden_candidates/{candidateId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      // tool_results/{toolKey} — the candidate's latest saved AI-tool output,
+      // so a PAID user can revisit it for free next time instead of re-spending
+      // credits ("Try next" re-runs the tool). Owner-read; writes are gated to
+      // candidate paid plans — free users don't get saves. subscription_status
+      // is server-only/immutable from the client (pinned on the user update
+      // rule above), so this tier check can't be forged from the browser.
+      match /tool_results/{toolKey} {
+        allow read: if isOwner(userId);
+        // Key allowlist mirrors exactly what services/toolResults.ts writes
+        // ({ tool_key, version, result, saved_at }) so arbitrary extra fields
+        // can't be smuggled into the doc.
+        allow create, update: if isOwner(userId)
+          && get(/databases/$(database)/documents/users/$(userId)).data.subscription_status in ["essentials", "accelerator", "executive"]
+          && request.resource.data.keys().hasOnly(["tool_key", "version", "result", "saved_at"])
+          && request.resource.data.tool_key is string
+          && request.resource.data.tool_key.size() <= 80;
+        allow delete: if isOwner(userId);
+      }
+
+      // portfolios/{portfolioId} - saved Showcase websites. HTML is stored in
+      // Storage under portfolio-sites/{uid}/{portfolioId}/showcase.html.
+      match /portfolios/{portfolioId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && validSavedPortfolio(request.resource.data, userId, portfolioId);
+        allow update: if false;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // ---- job_postings/{jobId} ---------------------------------------------
+    // Any signed-in user may browse active postings; the owning employer may
+    // also see their own inactive ones and is the only writer.
+    // job_postings — SERVER-ONLY writes. Create / update / close+reopen go through
+    // the createJobPosting / updateJobPosting / setJobPostingActive callables
+    // (Admin SDK), which enforce: employer/agency role, per-plan ACTIVE-job limits
+    // (rules can't count, which is why this must be a callable), server-read
+    // company identity (a client can't forge the company), and an audit trail in
+    // job_posting_events. Clients may read active postings (+ their own). Every
+    // mutation, including deletion, is server-only so cleanup and audit cannot
+    // be bypassed by a direct SDK call.
+    match /job_postings/{jobId} {
+      allow read: if isSignedIn() &&
+        (resource.data.is_active == true || resource.data.employer_id == request.auth.uid);
+
+      allow create, update, delete: if false;
+    }
+
+    // job_posting_events/{eventId} — append-only audit log of posting lifecycle
+    // actions (created/updated/closed/reopened + optional reason). Written by the
+    // job-posting callables via the Admin SDK; clients never read or write it.
+    match /job_posting_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // active_job_counters/{employerId} — transaction lock/counter used by the
+    // posting callables to enforce concurrent active-job caps. Server-only.
+    match /active_job_counters/{employerId} {
+      allow read, write: if false;
+    }
+
+    // ---- job_applications/{applicationId} ---------------------------------
+    // Both the candidate and the owning employer may read. Creates and status
+    // updates are server-only so every application mutation is validated and
+    // auditable through Cloud Functions. Deletion is also server-only so a
+    // client cannot bypass lifecycle cleanup or the application audit trail.
+    //
+    // CREATE is client-forbidden: all writes go through the createJobApplication
+    // Cloud Function (Admin SDK), which reads employer_id/job_title from the
+    // authoritative job_postings doc so the client cannot forge them, and
+    // rejects duplicate applications atomically.
+    match /job_applications/{applicationId} {
+      allow read: if isSignedIn() &&
+        (resource.data.candidate_id == request.auth.uid ||
+         resource.data.employer_id == request.auth.uid);
+
+      // Server-only — createJobApplication and updateApplicationStatus use the
+      // Admin SDK and bypass these rules. Direct client creates/updates are
+      // rejected so status changes cannot skip the audit log.
+      allow create, update, delete: if false;
+    }
+
+    // ---- company_reviews/{id} --------------------------------------------
+    // id format: `${employerId}_${candidateUid}`. The doc carries author_uid AND
+    // an identity-encoding id, so DIRECT client reads are denied — they would
+    // de-anonymize reviewers. Reads go through the listCompanyReviews callable
+    // (Admin SDK), which projects out author_uid and the raw id. Writes are
+    // server-only (createCompanyReview callable).
+    match /company_reviews/{id} {
+      allow read, write: if false;
+    }
+
+    // talent_profiles/{uid} — the candidate's reusable structured profile. PII
+    // (name/email/phone + history). Owner-only client access; employers see it
+    // only via the server-side Discover Talent / applicant flow (Admin SDK).
+    match /talent_profiles/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // portfolio_drafts/{uid} — the candidate's user-reviewed Showcase Builder
+    // text draft. Owner-only; images are intentionally not stored here.
+    match /portfolio_drafts/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validPortfolioDraft(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    // mail/{id} — outbound email queue for the "Trigger Email" extension. Holds
+    // candidate email addresses; only the Admin SDK (notifications trigger) and
+    // the extension touch it. Clients can NEVER enqueue or read mail.
+    match /mail/{id} {
+      allow read, write: if false;
+    }
+
+    // billing/{uid} — server-only paid-entitlement gate for recurring credit
+    // grants. Written ONLY by a real payment (Stripe webhook) / admin, never the
+    // client (which could otherwise self-grant unlimited monthly credits).
+    match /billing/{uid} {
+      allow read, write: if false;
+    }
+
+    // Paid-checkout and credit-refund compensation queues contain provider and
+    // account references. Operators/workers use the Admin SDK; no browser role
+    // may inspect, resolve, or delete these records directly.
+    match /billing_fulfillment_reviews/{reviewId} {
+      allow read, write: if false;
+    }
+    match /credit_refund_reviews/{reviewId} {
+      allow read, write: if false;
+    }
+    match /usage_counter_reconciliation_reviews/{reviewId} {
+      allow read, write: if false;
+    }
+
+    // private_custom_provider_configs/{uid} — raw customer BYOA credentials.
+    // Only Admin SDK code may access this collection. The callable returns a
+    // masked projection; even the document owner has no direct client access.
+    match /private_custom_provider_configs/{uid} {
+      allow read, write: if false;
+    }
+
+    // API Platform registry — partner applications, key metadata, request logs
+    // and per-key rate-limit/quota counters. Admin UI reads/mutates through Cloud
+    // Functions only; the public gateway (publicApi) authenticates + meters via
+    // the Admin SDK. So role checks, secret hashing, one-time key display, quota
+    // enforcement and audit logging cannot be bypassed by direct Firestore access.
+    match /api_applications/{appId} {
+      allow read, write: if false;
+    }
+    match /api_keys/{keyId} {
+      allow read, write: if false;
+    }
+    match /api_usage_logs/{entryId} {
+      allow read, write: if false;
+    }
+    // Per-key usage counters (minute/month windows) the gateway increments to
+    // enforce rate limits + quota. Client access would let a partner reset their
+    // own counters and bypass limits — server-only.
+    match /api_key_usage/{keyId} {
+      allow read, write: if false;
+    }
+
+    // application_snapshots/{applicationId} — the frozen resume/Talent-Profile
+    // snapshot taken at apply time (the version HR reviews). Holds candidate PII;
+    // written by createJobApplication and read by the employer-resume callables,
+    // all Admin SDK. Clients NEVER read or write it directly.
+    match /application_snapshots/{applicationId} {
+      allow read, write: if false;
+    }
+
+    // application_status_events/{eventId} — immutable audit log for application
+    // status changes. Contains employer-only rationale and optional candidate
+    // notes; clients use callables/UI projections, never direct reads or writes.
+    match /application_status_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // application_interviews/{interviewId} — scheduled interviews for an
+    // application. BOTH parties may READ their own (the candidate sees the time/
+    // format/link to confirm; the owning employer manages them). All WRITES are
+    // server-only: the scheduleInterview / updateInterview / confirmInterview
+    // callables (Admin SDK) enforce that only the job-owning employer schedules/
+    // edits and only the candidate confirms. No employer-secret fields live here
+    // (scorecards are a separate, employer-only surface).
+    match /application_interviews/{interviewId} {
+      allow read: if isSignedIn() &&
+        (resource.data.candidate_id == request.auth.uid ||
+         resource.data.employer_id == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // application_scorecards/{scorecardId} — employer-only structured interview
+    // evaluations. Candidates cannot read these because they contain internal
+    // hiring judgement, evidence notes, and risks. Writes are server-only through
+    // upsertScorecard, which verifies the employer owns the interview/job.
+    match /application_scorecards/{scorecardId} {
+      allow read: if isSignedIn() &&
+        resource.data.employer_id == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
+    // application_messages/{messageId} — in-application direct messages between the
+    // job-owning employer and the candidate (BOSS-style direct comms). BOTH parties
+    // READ the whole thread for their application — messages are shared, not
+    // employer-secret like scorecards. All WRITES are server-only via the
+    // sendApplicationMessage callable, which proves the sender is a participant and
+    // stamps an immutable, attributable, timestamped record (the audit trail itself).
+    match /application_messages/{messageId} {
+      allow read: if isSignedIn() &&
+        (resource.data.candidate_id == request.auth.uid ||
+         resource.data.employer_id == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // sourcing_outreach/{outreachId} — consent-gated sourcing requests created
+    // from Discover Talent. Employers see only safe candidate signals until the
+    // candidate accepts; then the employer retrieves the richer packet through
+    // getSourcingCandidatePacket. BOTH parties may READ their own request status;
+    // all WRITES are server-only to prevent forged acceptance/unlock records.
+    match /sourcing_outreach/{outreachId} {
+      allow read: if isSignedIn() &&
+        (resource.data.candidate_id == request.auth.uid ||
+         resource.data.employer_id == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // sourcing_candidate_packets/{outreachId} — immutable PII snapshot created
+    // only when a candidate accepts a request. Access is mediated by the callable
+    // so revocation and the 30-day expiry cannot be bypassed by a direct SDK read.
+    match /sourcing_candidate_packets/{outreachId} {
+      allow read, write: if false;
+    }
+
+    // Pair guards serialize employer-to-candidate consent state, while daily
+    // quota documents enforce abuse limits. Both are Admin-SDK-only control
+    // records and must never be visible or mutable from a browser client.
+    match /sourcing_outreach_pair_guards/{guardId} {
+      allow read, write: if false;
+    }
+    match /sourcing_outreach_daily_quotas/{quotaId} {
+      allow read, write: if false;
+    }
+
+    // employer_responsiveness/{employerId} — coarse, backward-looking aggregate
+    // (avg days-to-first-action, last action) derived server-side from the audit
+    // log. Employer-level, NO candidate PII — any signed-in user may read it to
+    // see the job-card responsiveness badge. Server-only writes (trigger).
+    match /employer_responsiveness/{employerId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // employer_rating/{employerId} — coarse company-rating aggregate { avg, count }
+    // derived server-side from company_reviews (no PII). Any signed-in user may read
+    // it for the job-card rating chip. Server-only writes (trigger).
+    match /employer_rating/{employerId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // platform_config, usage_events, credit_ledger — and everything else — are
+    // server-only (Admin SDK). Clients must use admin* Cloud Functions; no
+    // direct reads/writes.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

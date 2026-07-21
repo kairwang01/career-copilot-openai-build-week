@@ -1,0 +1,37 @@
+{
+  "_note": "Labelled eval set for M7 (resume-analysis agreement) + M8 (interview consistency). 'reference' is the human-labelled expectation; 'sampleOutput'/'sampleScores' are stand-in model outputs that let the runner self-check deterministically (--dry-run). In live mode the runner replaces them with real model calls.",
+  "resumeSamples": [
+    {
+      "id": "frontend-newgrad",
+      "resume_text": "Casey Candidate — Frontend engineer. Built accessible React + TypeScript UI components, improved Lighthouse scores, collaborated cross-functionally, shipped to production. B.Eng, University of Ottawa.",
+      "reference": { "keywords": ["react", "typescript", "accessibility", "frontend"], "scoreBand": [65, 92] },
+      "sampleOutput": { "score": 80, "keywords": ["React", "TypeScript", "Accessibility", "UI"] }
+    },
+    {
+      "id": "data-analyst",
+      "resume_text": "Data analyst with SQL, Python, dashboards, A/B testing, and stakeholder reporting across 3 years in fintech.",
+      "reference": { "keywords": ["sql", "python", "dashboards", "a/b testing"], "scoreBand": [60, 90] },
+      "sampleOutput": { "score": 74, "keywords": ["SQL", "Python", "Dashboards", "experimentation"] }
+    },
+    {
+      "id": "pm-midlevel",
+      "resume_text": "Product manager: roadmap ownership, user research, prioritization, cross-functional delivery, KPI tracking.",
+      "reference": { "keywords": ["roadmap", "user research", "prioritization", "kpi"], "scoreBand": [62, 90] },
+      "sampleOutput": { "score": 71, "keywords": ["Roadmap", "User research", "Prioritization", "metrics"] }
+    }
+  ],
+  "interviewConsistencySamples": [
+    {
+      "id": "star-leadership",
+      "question": "Tell me about a time you led a project under a tight deadline.",
+      "answer": "Situation: our release slipped... Task: I owned the recovery plan... Action: I re-scoped and parallelized... Result: shipped 2 days early with no Sev-1s.",
+      "sampleScores": [82, 80, 83, 81]
+    },
+    {
+      "id": "weakness",
+      "question": "What is your biggest weakness?",
+      "answer": "I used to over-commit; I now timebox and renegotiate scope early.",
+      "sampleScores": [70, 72, 69]
+    }
+  ]
+}

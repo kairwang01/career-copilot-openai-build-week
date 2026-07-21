@@ -1,0 +1,16 @@
+# Compiled output
+lib/
+
+# Dependencies
+node_modules/
+
+# Local environment secrets — NEVER commit these files. Firebase also loads
+# project-specific files such as .env.career-copilot-a3168 during deploys.
+.env
+.env.*
+!.env.example
+# This checked-in project selector contains only non-secret runtime switches.
+!.env.demo-careercopilot
+
+# TypeScript build info
+*.tsbuildinfo
