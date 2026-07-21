@@ -14,7 +14,7 @@ Codex and GPT-5.6 were used as an agentic engineering pair during the Build Week
 |---|---|---|
 | Repository understanding | Read the role-based React surfaces, Firebase trust boundaries, Cloud Functions, AI routing, billing, and release documentation before changing or describing the system. | [`CareerApp.tsx`](CareerApp.tsx), [`functions/src/index.ts`](functions/src/index.ts), [`firestore.rules`](firestore.rules) |
 | Reliability analysis | Traced real failure paths across AI requests, idempotent credit charging, refunds, provider fallback, hiring transitions, and Stripe entitlement checks. | [`functions/src/credits/deductCredits.ts`](functions/src/credits/deductCredits.ts), [`functions/src/llm/models.ts`](functions/src/llm/models.ts), [`functions/src/billing/entitlement.ts`](functions/src/billing/entitlement.ts) |
-| Test-driven hardening | Used failing tests and release-gate evidence to narrow root causes, review targeted fixes, and preserve exact-commit evidence instead of treating plausible code as proof. | [`scripts/run-release-gate.mjs`](scripts/run-release-gate.mjs), [`tests/`](tests/), [`e2e/`](e2e/) |
+| Test-driven hardening | Used failing tests, CI, and release-gate evidence to narrow root causes, review targeted fixes, and preserve exact-commit evidence instead of treating plausible code as proof. | [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`scripts/run-release-gate.mjs`](scripts/run-release-gate.mjs), [`tests/`](tests/) |
 | Product communication | Turned the verified architecture and live product screens into an evaluator-first README, Devpost story, evidence map, and honest launch boundary. | [`docs/devpost/PROJECT_STORY.md`](docs/devpost/PROJECT_STORY.md), [`public/product-screenshots/`](public/product-screenshots/) |
 
 The workflow followed three rules:
@@ -156,7 +156,7 @@ npm run test:callables
 
 ## Technology
 
-TypeScript · React 19 · Vite · Tailwind CSS · Node.js · Firebase Authentication · Cloud Firestore · Cloud Functions · Cloud Storage · Gemini · OpenAI-compatible APIs · Stripe · Sentry · Vitest · Playwright
+TypeScript · React 19 · Vite · Tailwind CSS · Node.js · Firebase Authentication · Cloud Firestore · Cloud Functions · Cloud Storage · Gemini · OpenAI-compatible APIs · Stripe · Sentry · Vitest · Playwright · GitHub Actions
 
 ## Current status and next steps
 
