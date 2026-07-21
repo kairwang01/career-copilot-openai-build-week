@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Career CoPilot — OpenAI Build Week</title>
+  <style>
+    :root {
+      --navy: #06132c;
+      --blue: #1d5ff3;
+      --cyan: #42d8ff;
+      --gold: #ffb321;
+      --ink: #10213f;
+      --muted: #6f7e99;
+      --line: #d9e4f5;
+      --paper: #f7faff;
+      --ease: cubic-bezier(.22,.78,.24,1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--navy); }
+    body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: var(--ink); }
+
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+    #stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 8% 9%, rgba(66,216,255,.15), transparent 24%),
+        radial-gradient(circle at 93% 88%, rgba(29,95,243,.11), transparent 26%),
+        linear-gradient(135deg, #fbfdff 0%, #edf4ff 100%);
+      z-index: 0;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .scene > * { position: relative; z-index: 2; }
+    .scene.active .rise { animation: rise .8s var(--ease) both; }
+    .scene.active .rise-2 { animation: rise .8s .16s var(--ease) both; }
+    .scene.active .rise-3 { animation: rise .8s .30s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+
+    .topline {
+      position: absolute;
+      left: 74px;
+      right: 74px;
+      top: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #4c607f;
+      font-weight: 700;
+      letter-spacing: .09em;
+      font-size: 18px;
+      text-transform: uppercase;
+      z-index: 10;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; color: #173d93; }
+    .brand-mark {
+      width: 34px; height: 34px; transform: rotate(45deg);
+      background: linear-gradient(135deg, var(--gold), #ffdf7b);
+      box-shadow: 0 0 0 8px rgba(29,95,243,.09);
+      border-radius: 5px;
+    }
+    .chapter { color: #6f7e99; }
+
+    .kicker { color: var(--blue); font-size: 19px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 86px; line-height: .98; letter-spacing: -.055em; color: var(--navy); }
+    h2 { font-size: 58px; line-height: 1.02; letter-spacing: -.042em; color: var(--navy); }
+    h3 { font-size: 27px; line-height: 1.18; color: var(--navy); }
+    .lead { font-size: 29px; line-height: 1.38; color: #536583; }
+    .blue { color: var(--blue); }
+    .gold { color: #cf8500; }
+
+    .browser-frame {
+      background: #fff;
+      border: 1px solid rgba(23,61,147,.14);
+      border-radius: 24px;
+      box-shadow: 0 30px 85px rgba(11,31,74,.20);
+      overflow: hidden;
+    }
+    .browser-bar { height: 42px; background: #f6f8fc; border-bottom: 1px solid #e3eaf6; display: flex; align-items: center; gap: 8px; padding: 0 18px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e5; }
+    .browser-frame video, .browser-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    .chip { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; border: 1px solid #d7e3f5; border-radius: 999px; background: rgba(255,255,255,.9); color: #385176; font-size: 17px; font-weight: 750; box-shadow: 0 10px 28px rgba(15,47,112,.08); }
+    .chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 4px rgba(29,95,243,.12); }
+
+    /* Intro */
+    #intro { display: grid; grid-template-columns: 1.08fr .92fr; padding: 142px 78px 96px; align-items: center; }
+    #intro .copy { padding-left: 28px; max-width: 910px; }
+    #intro h1 { margin-top: 22px; max-width: 850px; }
+    #intro .lead { margin-top: 32px; max-width: 780px; }
+    #intro .chips { margin-top: 38px; display: flex; gap: 14px; flex-wrap: wrap; }
+    #intro .hero-card { width: 720px; height: 716px; transform: rotate(1.6deg); justify-self: end; }
+    #intro .hero-card img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    #intro::after { content: ""; position: absolute; width: 510px; height: 510px; right: -110px; top: -190px; border: 90px solid rgba(29,95,243,.08); border-radius: 50%; }
+
+    /* Full demo */
+    .demo-scene { padding: 116px 74px 86px; }
+    .demo-scene .headline { position: absolute; left: 94px; top: 128px; max-width: 660px; z-index: 8; }
+    .demo-scene .headline h2 { font-size: 54px; }
+    .demo-scene .headline p { margin-top: 16px; font-size: 23px; line-height: 1.35; color: #62738f; }
+    .demo-scene .frame-large { position: absolute; left: 80px; right: 80px; top: 264px; bottom: 80px; }
+    .demo-scene .frame-large video { object-fit: cover; }
+
+    /* Screenshot */
+    #resume { padding: 118px 78px 78px; display: grid; grid-template-columns: .72fr 1.28fr; gap: 44px; align-items: center; }
+    #resume .copy { padding-left: 18px; }
+    #resume .copy h2 { margin-top: 20px; }
+    #resume .copy .lead { margin-top: 25px; font-size: 25px; }
+    #resume .stack { display: grid; gap: 13px; margin-top: 28px; }
+    #resume .frame { height: 740px; }
+    #resume .frame img { object-fit: cover; object-position: top; transform: scale(1.035); animation: drift 20s linear both; }
+    @keyframes drift { from { transform: scale(1.035) translateY(0); } to { transform: scale(1.11) translateY(-20px); } }
+
+    /* Workspace */
+    #workspace { padding: 122px 74px 78px; }
+    #workspace .header-row { display: flex; align-items: end; justify-content: space-between; padding: 0 18px 26px; }
+    #workspace .header-row p { max-width: 690px; text-align: right; font-size: 22px; line-height: 1.35; color: #667791; }
+    #workspace .frame { height: 760px; }
+    #workspace .frame video { object-fit: cover; }
+    #workspace .labels { position: absolute; left: 112px; bottom: 102px; display: flex; gap: 12px; z-index: 9; }
+
+    /* Employer */
+    #employer { padding: 126px 74px 74px; display: grid; grid-template-columns: 1.3fr .7fr; gap: 48px; align-items: center; }
+    #employer .frame { height: 748px; }
+    #employer .frame img { object-fit: cover; object-position: top; transform: scale(1.03); }
+    #employer .copy h2 { margin-top: 20px; }
+    #employer .copy .lead { margin-top: 24px; font-size: 24px; }
+    #employer .cards { display: grid; gap: 14px; margin-top: 32px; }
+    .mini-card { background: rgba(255,255,255,.9); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; box-shadow: 0 13px 36px rgba(19,48,103,.08); }
+    .mini-card b { display: block; color: var(--navy); font-size: 20px; }
+    .mini-card span { display: block; margin-top: 5px; color: #6a7a94; font-size: 16px; line-height: 1.3; }
+
+    /* Localization */
+    #localization { padding: 122px 74px 78px; }
+    #localization .header-row { display: flex; align-items: end; justify-content: space-between; padding: 0 18px 24px; }
+    #localization .header-row p { max-width: 650px; text-align: right; font-size: 22px; line-height: 1.35; color: #667791; }
+    #localization .frame { height: 760px; }
+    #localization .market-row { position: absolute; right: 112px; bottom: 106px; display: flex; gap: 10px; z-index: 9; }
+
+    /* Pipelines */
+    #reliability, #release { padding: 130px 86px 78px; }
+    #reliability .intro-copy, #release .intro-copy { max-width: 1180px; }
+    #reliability h2, #release h2 { margin-top: 18px; }
+    .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; margin-top: 70px; align-items: stretch; }
+    .step { min-height: 350px; background: #fff; border: 1px solid #d6e3f5; border-radius: 22px; padding: 27px 24px; box-shadow: 0 18px 45px rgba(14,48,115,.09); position: relative; overflow: hidden; }
+    .step::after { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 7px; background: var(--blue); transform-origin: left; transform: scaleX(calc(.15 + var(--local, 0) * .85)); }
+    .step .num { font-size: 15px; letter-spacing: .13em; color: var(--blue); font-weight: 850; }
+    .step h3 { margin-top: 28px; font-size: 24px; }
+    .step p { margin-top: 15px; color: #6a7c98; font-size: 17px; line-height: 1.45; }
+    .step:nth-child(5)::after { background: var(--gold); }
+    .step:nth-child(6)::after { background: #21ae79; }
+
+    #release .gate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 62px; }
+    .gate { background: #fff; border: 1px solid #d7e4f7; border-radius: 24px; padding: 30px 28px; box-shadow: 0 18px 45px rgba(14,48,115,.09); min-height: 290px; }
+    .gate .status { display: inline-flex; padding: 7px 11px; border-radius: 999px; background: #e7f8f1; color: #137858; font-size: 14px; font-weight: 850; letter-spacing: .08em; }
+    .gate h3 { margin-top: 25px; font-size: 26px; }
+    .gate code { display: block; margin-top: 19px; padding: 15px; border-radius: 12px; background: #07152f; color: #cde3ff; font: 15px/1.45 "Cascadia Code", Consolas, monospace; }
+    #release .proof { margin-top: 28px; padding: 20px 24px; border-radius: 18px; background: rgba(29,95,243,.07); border: 1px solid rgba(29,95,243,.14); color: #314e83; font-size: 19px; font-weight: 700; }
+
+    /* Codex */
+    #codex { padding: 126px 78px 72px; display: grid; grid-template-columns: .82fr 1.18fr; gap: 42px; align-items: center; }
+    #codex .copy { padding-left: 14px; }
+    #codex .copy h2 { margin-top: 18px; }
+    #codex .copy .lead { margin-top: 25px; font-size: 24px; }
+    #codex .decision { margin-top: 31px; border-left: 4px solid var(--gold); padding: 8px 0 8px 19px; color: #5b6f91; font-size: 18px; line-height: 1.45; }
+    .workbench { background: #07152f; color: #dce9ff; border-radius: 26px; height: 790px; box-shadow: 0 30px 85px rgba(6,22,55,.30); overflow: hidden; border: 1px solid #1d3763; }
+    .workbench-head { height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 23px; border-bottom: 1px solid #1b3560; color: #97afd5; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+    .workbench-body { display: grid; grid-template-columns: 235px 1fr; height: calc(100% - 58px); }
+    .tree { border-right: 1px solid #1b3560; padding: 22px 18px; color: #91a9cf; font: 14px/1.85 "Cascadia Code", Consolas, monospace; }
+    .tree b { color: #fff; }
+    .terminal { padding: 25px 28px; font: 16px/1.55 "Cascadia Code", Consolas, monospace; }
+    .terminal .prompt { color: #6fe4c4; }
+    .terminal .dim { color: #7289af; }
+    .terminal .path { color: #8fc5ff; }
+    .terminal .pass { color: #75e6b9; }
+    .terminal .gold { color: #ffd16d; }
+    .terminal .block { margin-top: 18px; border: 1px solid #244474; border-radius: 14px; padding: 18px 20px; background: rgba(255,255,255,.035); }
+    .terminal .block strong { display: block; color: #fff; margin-bottom: 8px; }
+
+    /* Closing */
+    #closing { display: grid; grid-template-columns: .94fr 1.06fr; align-items: center; padding: 136px 82px 76px; background: linear-gradient(120deg, #06132c 0%, #0d285d 100%); color: white; }
+    #closing .topline { color: #b7caeb; }
+    #closing .brand { color: #fff; }
+    #closing h2 { color: #fff; font-size: 70px; }
+    #closing .lead { color: #c7d6ef; margin-top: 26px; font-size: 26px; max-width: 740px; }
+    #closing .links { margin-top: 38px; display: grid; gap: 13px; color: #d6e4fb; font: 19px/1.35 "Cascadia Code", Consolas, monospace; }
+    #closing .collage { height: 760px; position: relative; }
+    #closing .collage img { position: absolute; width: 600px; border-radius: 20px; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 28px 70px rgba(0,0,0,.34); }
+    #closing .collage img:nth-child(1) { left: 40px; top: 40px; transform: rotate(-3deg); }
+    #closing .collage img:nth-child(2) { right: 16px; top: 205px; transform: rotate(3deg); }
+    #closing .collage img:nth-child(3) { left: 88px; bottom: 18px; transform: rotate(-1deg); }
+
+    .safe-subtitle { position: absolute; left: 12%; right: 12%; bottom: 34px; height: 98px; border-radius: 18px; border: 1px dashed rgba(29,95,243,0); z-index: 20; }
+  </style>
+</head>
+<body>
+  <main id="stage">
+    <section class="scene" id="intro" data-start="0" data-end="9">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">OpenAI Build Week</div></div>
+      <div class="copy">
+        <div class="kicker rise">NorthStar presents</div>
+        <h1 class="rise-2">From resume evidence to a <span class="blue">better decision.</span></h1>
+        <p class="lead rise-3">A governed AI workspace connecting candidates and hiring teams.</p>
+        <div class="chips rise-3"><span class="chip">Candidate workflow</span><span class="chip">Hiring workflow</span><span class="chip">Human-controlled decisions</span></div>
+      </div>
+      <div class="browser-frame hero-card rise-2"><img src="assets/cover.png" alt="Career CoPilot product cover" /></div>
+    </section>
+
+    <section class="scene demo-scene" id="problem" data-start="9" data-end="23">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">01 — The problem</div></div>
+      <div class="headline rise"><div class="kicker">One guided workflow</div><h2>Career tools should <span class="blue">connect.</span></h2><p>Resume, opportunity, application, and interview evidence belong in one journey.</p></div>
+      <div class="browser-frame frame-large rise-2"><video id="landing-video" data-offset="0" src="assets/landing.webm" muted playsinline></video></div>
+    </section>
+
+    <section class="scene" id="resume" data-start="23" data-end="43">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">02 — Resume evidence</div></div>
+      <div class="copy">
+        <div class="kicker rise">Candidate demo</div>
+        <h2 class="rise-2">A readiness report that explains <span class="blue">what to improve.</span></h2>
+        <p class="lead rise-3">The report links recommendations to evidence, skill gaps, and next actions.</p>
+        <div class="stack rise-3"><span class="chip">Evidence-based feedback</span><span class="chip">Actionable skill gaps</span><span class="chip">Market-aware resume structure</span></div>
+      </div>
+      <div class="browser-frame frame rise-2"><img src="assets/resume-readiness-report.png" alt="Resume readiness report" /></div>
+    </section>
+
+    <section class="scene" id="workspace" data-start="43" data-end="61">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">03 — From insight to practice</div></div>
+      <div class="header-row rise"><h2>One workspace. <span class="blue">The next action is visible.</span></h2><p>Track progress, move into resume review, and prepare interview responses for a target role.</p></div>
+      <div class="browser-frame frame rise-2"><video id="workspace-video" data-offset="7" src="assets/workspace.webm" muted playsinline></video></div>
+      <div class="labels rise-3"><span class="chip">Career plan</span><span class="chip">Application tracking</span><span class="chip">Interview practice</span></div>
+    </section>
+
+    <section class="scene" id="employer" data-start="61" data-end="80">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">04 — Hiring workflow</div></div>
+      <div class="browser-frame frame rise"><img src="assets/employer-candidate-match.png" alt="Employer candidate match" /></div>
+      <div class="copy">
+        <div class="kicker rise">For hiring teams</div>
+        <h2 class="rise-2">A match comes with <span class="blue">supporting evidence.</span></h2>
+        <p class="lead rise-3">Opted-in candidates move through a structured, auditable process.</p>
+        <div class="cards rise-3">
+          <div class="mini-card"><b>Consent gated</b><span>Candidate data is shared only through explicit, revocable access.</span></div>
+          <div class="mini-card"><b>Explainable matching</b><span>Requirements, strengths, and gaps stay visible to reviewers.</span></div>
+          <div class="mini-card"><b>Structured decisions</b><span>Stages, scorecards, and messages preserve the hiring trail.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="localization" data-start="80" data-end="95">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">05 — Market-aware localization</div></div>
+      <div class="header-row rise"><h2>Seven interface languages. <span class="blue">More than translation.</span></h2><p>Resume structure, section order, date format, and personal-data conventions adapt to the target market.</p></div>
+      <div class="browser-frame frame rise-2"><video id="i18n-video" data-offset="8" src="assets/i18n.webm" muted playsinline></video></div>
+      <div class="market-row rise-3"><span class="chip">English</span><span class="chip">Français</span><span class="chip">中文</span><span class="chip">日本語</span></div>
+    </section>
+
+    <section class="scene" id="reliability" data-start="95" data-end="121">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">06 — Governed AI execution</div></div>
+      <div class="intro-copy rise"><div class="kicker">Reliability behind the interface</div><h2>Every request follows a <span class="blue">server-owned path.</span></h2></div>
+      <div class="pipeline">
+        <div class="step rise"><div class="num">01 / AUTH</div><h3>Authenticate</h3><p>Confirm identity and role before execution.</p></div>
+        <div class="step rise-2"><div class="num">02 / LIMIT</div><h3>Validate</h3><p>Bound the payload and reject unsafe shapes.</p></div>
+        <div class="step rise-3"><div class="num">03 / ONCE</div><h3>Claim once</h3><p>Use an idempotent request identifier.</p></div>
+        <div class="step rise"><div class="num">04 / POLICY</div><h3>Route</h3><p>Select an allowed model through server policy.</p></div>
+        <div class="step rise-2"><div class="num">05 / SCHEMA</div><h3>Verify output</h3><p>Check structured results before the UI uses them.</p></div>
+        <div class="step rise-3"><div class="num">06 / RECOVER</div><h3>Record or refund</h3><p>Persist usage and recover failed charges safely.</p></div>
+      </div>
+    </section>
+
+    <section class="scene" id="release" data-start="121" data-end="139">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">07 — Release evidence</div></div>
+      <div class="intro-copy rise"><div class="kicker">Evidence before confidence</div><h2>Quality is checked at <span class="blue">four layers.</span></h2></div>
+      <div class="gate-grid">
+        <div class="gate rise"><span class="status">PASS</span><h3>Source contracts</h3><code>npm run typecheck</code></div>
+        <div class="gate rise-2"><span class="status">PASS</span><h3>Focused tests</h3><code>vitest run tests/</code></div>
+        <div class="gate rise-3"><span class="status">PASS</span><h3>Server boundaries</h3><code>emulator contracts</code></div>
+        <div class="gate rise"><span class="status">PASS</span><h3>User journeys</h3><code>browser flows</code></div>
+      </div>
+      <div class="proof rise-3">Exact-commit evidence keeps a green result tied to the source that judges review.</div>
+    </section>
+
+    <section class="scene" id="codex" data-start="139" data-end="166">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">08 — Codex + GPT-5.6</div></div>
+      <div class="copy">
+        <div class="kicker rise">Agentic engineering collaboration</div>
+        <h2 class="rise-2">Codex accelerated the path from <span class="blue">question to evidence.</span></h2>
+        <p class="lead rise-3">GPT-5.6 reasoned across candidate, employer, server, data, AI-routing, and test boundaries.</p>
+        <div class="decision rise-3"><b>Human decisions:</b> product direction, architecture tradeoffs, change acceptance, and deployment approval.</div>
+      </div>
+      <div class="workbench rise-2">
+        <div class="workbench-head"><span>Career CoPilot / Build Week</span><span>Verified workflow</span></div>
+        <div class="workbench-body">
+          <div class="tree"><b>src</b><br>├─ candidate<br>├─ employer<br>├─ admin<br><b>functions</b><br>├─ credits<br>├─ ai-routing<br>├─ consent<br><b>tests</b><br>├─ callables<br>├─ rules<br>└─ browser</div>
+          <div class="terminal">
+            <span class="prompt">codex ›</span> map the request path before changing it<br>
+            <span class="dim">read</span> <span class="path">CareerApp.tsx → functions/src/index.ts → rules</span>
+            <div class="block"><strong>Trace the failure</strong><span class="dim">credit charge → provider call → structured output → refund recovery</span></div>
+            <div class="block"><strong>Turn the finding into proof</strong><span class="path">creditRefundRecovery.test.ts</span><br><span class="path">talentDiscoveryConsent.test.ts</span><br><span class="path">stripeRedirectUrl.test.ts</span></div>
+            <div class="block"><strong>Review on an exact commit</strong><span class="pass">✓ source checks</span><br><span class="pass">✓ focused tests</span><br><span class="pass">✓ release evidence</span></div>
+            <br><span class="gold">Session</span> 019f65f0-8e51-7411-8cac-f29496748fe5
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="closing" data-start="166" data-end="176">
+      <div class="topline"><div class="brand"><span class="brand-mark"></span>Career CoPilot</div><div class="chapter">NorthStar</div></div>
+      <div class="copy">
+        <div class="kicker rise" style="color:#6fe4c4">A governed decision-support system</div>
+        <h2 class="rise-2">Navigate the career. <span style="color:#6eb8ff">Land the job.</span></h2>
+        <p class="lead rise-3">Try the public demo, then inspect the evidence in the repository.</p>
+        <div class="links rise-3"><span>copilot.kairwang.cloud</span><span>github.com/kairwang01/career-copilot-openai-build-week</span></div>
+      </div>
+      <div class="collage rise-2"><img src="assets/career-path-planner.png" alt="Career path planner" /><img src="assets/interview-practice-feedback.png" alt="Interview feedback" /><img src="assets/resume-readiness-report.png" alt="Resume report" /></div>
+    </section>
+    <div class="safe-subtitle"></div>
+  </main>
+
+  <script>
+    const totalDuration = 176;
+    const sceneEls = [...document.querySelectorAll('.scene')];
+    const videos = [...document.querySelectorAll('video')];
+    const requestedSceneId = new URLSearchParams(location.search).get('scene');
+    const requestedScene = requestedSceneId
+      ? sceneEls.find(scene => scene.id === requestedSceneId)
+      : null;
+    const timelineStart = requestedScene ? Number(requestedScene.dataset.start) : 0;
+    const renderDuration = requestedScene
+      ? Number(requestedScene.dataset.end) - timelineStart
+      : totalDuration;
+    const startedAt = performance.now();
+    const activated = new Set();
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function tick() {
+      const elapsed = (performance.now() - startedAt) / 1000;
+      const now = timelineStart + elapsed;
+      for (const scene of sceneEls) {
+        if (requestedScene && scene !== requestedScene) {
+          scene.style.opacity = '0';
+          continue;
+        }
+        const start = Number(scene.dataset.start);
+        const end = Number(scene.dataset.end);
+        const local = now - start;
+        const inWindow = now >= start && now < end;
+        const alphaIn = clamp(local / .65, 0, 1);
+        const alphaOut = clamp((end - now) / .65, 0, 1);
+        scene.style.opacity = String(inWindow ? Math.min(alphaIn, alphaOut) : 0);
+        scene.style.setProperty('--local', String(clamp(local / (end - start), 0, 1)));
+        scene.classList.toggle('active', inWindow);
+
+        if (inWindow && !activated.has(scene.id)) {
+          activated.add(scene.id);
+          for (const video of scene.querySelectorAll('video')) {
+            video.currentTime = Number(video.dataset.offset || 0);
+            video.play().catch(() => {});
+          }
+        }
+        if (!inWindow) {
+          for (const video of scene.querySelectorAll('video')) video.pause();
+        }
+      }
+      if (elapsed >= renderDuration) {
+        window.animationFinished = true;
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+
+    window.animationFinished = false;
+    for (const video of videos) { video.muted = true; video.pause(); }
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

@@ -124,6 +124,25 @@ npm run gate:release:browser
 
 Release-gate success proves the reviewed source and controlled test environments. It does not replace live Stripe, email/DNS, Firebase IAM/TTL, privacy-operations, or real-device launch evidence.
 
+## Judge quickstart
+
+No rebuild is required for evaluation:
+
+1. Open the [interactive demo](https://copilot.kairwang.cloud/).
+2. Review the [sample resume-readiness report](https://copilot.kairwang.cloud/sample-report).
+3. Open the [employer experience](https://copilot.kairwang.cloud/employers) to inspect candidate matching and structured hiring stages.
+4. Use the product evidence and source links in this README to verify implementation details.
+
+The hosted experience supports current desktop and mobile browsers on macOS, Windows, iOS, and Android. Local development is supported on macOS, Windows, and Linux with the prerequisites below.
+
+Build Week evaluation references:
+
+- [Public demo video (2:56)](https://youtu.be/f64ERb7nwbU)
+- [Submitted Devpost project](https://devpost.com/software/career-copilot-tw14kl)
+- Codex `/feedback` session ID: `019f65f0-8e51-7411-8cac-f29496748fe5`
+- [OpenAI Build Week video script and compliance notes](docs/submission/VIDEO_SCRIPT.md)
+- [Devpost submission references](docs/submission/DEVPOST_COPY.md)
+
 ## Run locally
 
 ### Prerequisites
@@ -183,3 +202,7 @@ The Codex + GPT-5.6 work described above refers to the Build Week submission, re
 - [Production release checklist](docs/deploy-checklist.md)
 - [Security review](docs/security-review.md)
 - [Launch-readiness audit](docs/reviews/launch-readiness-audit-2026-07-13.md)
+
+## License
+
+This repository is available under the [MIT License](LICENSE).
