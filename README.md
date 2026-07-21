@@ -164,6 +164,19 @@ The public URL is an interactive product demo. Before broad customer launch, the
 
 Next product priorities are pilot feedback from candidates and employers, stronger AI quality evaluation, lower latency, accessibility testing, and decomposition of the largest candidate, employer, and admin modules.
 
+## Team
+
+Career CoPilot was created by a six-person University of Ottawa project team:
+
+- **Kair Wang** — project coordination, product planning, and frontend architecture
+- **Jingxuan Xu (Joyce)** — backend, APIs, Firebase migration, and server-authoritative credits
+- **Xiaoyi Zhang** — Firestore data modeling, employer workflows, and data-heavy UI
+- **Xiaoyan Yang (Rita)** — QA, UI implementation, bug triage, and billing UX
+- **Jiaoyang Bi** — DevOps, CI/CD, environment management, deployment, and documentation
+- **Xiang Zhao** — AI/NLP, provider abstraction, prompt engineering, and evaluation design
+
+The Codex + GPT-5.6 work described above refers to the Build Week submission, repository analysis, hardening, validation, and evaluator-facing documentation. It does not replace or erase the team's product contributions.
+
 ## More detail
 
 - [Devpost project story](docs/devpost/PROJECT_STORY.md)
