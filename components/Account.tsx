@@ -1261,6 +1261,7 @@ const Account: React.FC<AccountProps> = ({
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
+            disabled={profileLoading || profileSaving}
             className={inputClass}
           />
         </div>
@@ -1277,6 +1278,7 @@ const Account: React.FC<AccountProps> = ({
             value={birthDate}
             max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setBirthDate(e.target.value)}
+            disabled={profileLoading || profileSaving}
             className={inputClass}
           />
           <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t('account_birth_date_hint')}</p>
@@ -1285,7 +1287,7 @@ const Account: React.FC<AccountProps> = ({
           <button
             type="submit"
             className="inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 disabled:bg-blue-400 sm:w-auto"
-            disabled={profileSaving}
+            disabled={profileLoading || profileSaving}
           >
             {profileSaving
               ? t('account_saving_button')

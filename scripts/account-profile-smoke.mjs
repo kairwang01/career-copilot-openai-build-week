@@ -90,6 +90,28 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+async function waitForPersistedProfile(db, uid, expected, timeoutMs = 5_000) {
+  const started = Date.now();
+  let lastProfile = null;
+
+  while (Date.now() - started < timeoutMs) {
+    const snapshot = await db.collection('users').doc(uid).get();
+    lastProfile = snapshot.data() || null;
+    if (
+      lastProfile?.full_name === expected.fullName
+      && lastProfile?.birth_date === expected.birthDate
+      && Boolean(lastProfile?.updated_at)
+    ) {
+      return lastProfile;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(
+    `Firestore profile did not persist within ${timeoutMs}ms: ${JSON.stringify(lastProfile)}`,
+  );
+}
+
 async function collectAccountState(page) {
   return page.evaluate(() => ({
     url: window.location.href,
@@ -129,15 +151,16 @@ async function assertAccountProfileSave(browser, db, uid) {
     await signInCandidate(page);
     await page.locator('[data-qa="candidate-nav-account"]').click();
     await page.getByRole('heading', { name: /settings/i }).waitFor({ timeout: 20_000 });
-    await page.locator('#fullName').fill(fullName);
-    await page.locator('#birthDate').fill(birthDate);
+    const fullNameInput = page.locator('#fullName');
+    const birthDateInput = page.locator('#birthDate');
+    await fullNameInput.fill(fullName);
+    await birthDateInput.fill(birthDate);
+    assert(await fullNameInput.inputValue() === fullName, 'Full name input was overwritten before save');
+    assert(await birthDateInput.inputValue() === birthDate, 'Birth date input was overwritten before save');
     await page.getByRole('button', { name: /^save$/i }).click();
     await page.locator('[data-qa="account-profile-notice"]').filter({ hasText: /profile updated/i }).waitFor({ timeout: 20_000 });
 
-    const profile = await db.collection('users').doc(uid).get();
-    assert(profile.get('full_name') === fullName, `Firestore full_name did not persist: ${profile.get('full_name')}`);
-    assert(profile.get('birth_date') === birthDate, `Firestore birth_date did not persist: ${profile.get('birth_date')}`);
-    assert(Boolean(profile.get('updated_at')), 'Firestore updated_at missing after profile save');
+    await waitForPersistedProfile(db, uid, { fullName, birthDate });
 
     if (consoleErrors.length) {
       throw new Error(`Console errors during account profile smoke:\n${consoleErrors.join('\n')}`);
